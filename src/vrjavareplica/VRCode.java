@@ -24,6 +24,7 @@ public class VRCode implements Runnable{
     }
 
     public void run(){
+        System.out.println("Replica server started.") ;
         synchronized(this){
             this.runningThread = Thread.currentThread();
         }
@@ -34,7 +35,7 @@ public class VRCode implements Runnable{
                 clientSocket = this.serverSocket.accept();
             } catch (IOException e) {
                 if(isStopped()) {
-                    System.out.println("Server Stopped.") ;
+                    System.out.println("Replica server stopped.") ;
                     return;
                 }
                 throw new RuntimeException("Error accepting client connection", e);

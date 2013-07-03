@@ -37,7 +37,8 @@ public class Replica {
         viewNumber = 0;
         opNumber = 0;
         log = new Log();
-        
+        VRCode vrCode = new VRCode(this);
+        new Thread(vrCode).start();
     }
             
     private boolean loadParameters() {

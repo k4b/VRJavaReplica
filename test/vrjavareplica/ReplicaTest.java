@@ -279,8 +279,8 @@ public class ReplicaTest {
     public void testGetLog() {
         System.out.println("getLog");
         Replica instance = new Replica();
-        Log expResult = null;
-        Log result = instance.getLog();
+        ReplicaLog expResult = null;
+        ReplicaLog result = instance.getLog();
         assertEquals(expResult, result);
         // TODO review the generated test code and remove the default call to fail.
         fail("The test case is a prototype.");
@@ -292,7 +292,7 @@ public class ReplicaTest {
     //@Test
     public void testSetLog() {
         System.out.println("setLog");
-        Log log = null;
+        ReplicaLog log = null;
         Replica instance = new Replica();
         instance.setLog(log);
         // TODO review the generated test code and remove the default call to fail.

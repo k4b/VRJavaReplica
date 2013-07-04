@@ -8,6 +8,6 @@ package vrjavareplica;
  *
  * @author karol
  */
-public class Log {
+public class ReplicaLog {
     
 }

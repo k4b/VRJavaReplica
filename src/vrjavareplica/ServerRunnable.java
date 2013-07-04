@@ -17,17 +17,19 @@ import java.util.logging.Logger;
  */
 public class ServerRunnable implements Runnable{
 
+    protected int replicaID;
     protected Socket clientSocket = null;
     protected MessageProcessor messageProcessor;
 
-    public ServerRunnable(Socket clientSocket, MessageProcessor messageProcessor) {
+    public ServerRunnable(int replicaID, Socket clientSocket, MessageProcessor messageProcessor) {
+        this.replicaID = replicaID;
         this.clientSocket = clientSocket;
         this.messageProcessor = messageProcessor;
     }
 
     public void run() {
         try {            
-            System.out.println("Collecting message");
+            LogWriter.log(replicaID, "Collecting message...");
             DataInputStream dataInput = new DataInputStream(clientSocket.getInputStream());
             int size = dataInput.readInt();
             byte[] requestIDBytes = new byte[size];
@@ -109,45 +111,12 @@ public class ServerRunnable implements Runnable{
                     MyByteUtils.byteArrayToInt(requestNumberBytes),
                     MyByteUtils.byteArrayToInt(viewNumberBytes));
 
-            System.out.println("Received request:");
-            System.out.println(request.toString());
+            LogWriter.log(replicaID, "Received request:");
+            LogWriter.log(replicaID, request.toString());
         } catch (IOException ex) {
             Logger.getLogger(ServerRunnable.class.getName()).log(Level.SEVERE, null, ex);
         } finally {
             return request;
         }
     }
-    
-//    private void sendMessage(MessageReply reply) {
-//        DataOutputStream dataOutput = null;
-//        try {
-//            System.out.println("Sending message:");
-//            System.out.println(reply.toString());
-//            
-//            dataOutput = new DataOutputStream(clientSocket.getOutputStream());
-//            byte[] messageIDBytes = MyByteUtils.toByteArray(reply.getMessageID());
-//            dataOutput.writeInt(messageIDBytes.length);
-//            dataOutput.write(messageIDBytes);
-//            byte[] viewNumberBytes = MyByteUtils.toByteArray(reply.getViewNumber());
-//            dataOutput.writeInt(viewNumberBytes.length);
-//            dataOutput.write(viewNumberBytes);
-//            byte[] requestNumberBytes = MyByteUtils.toByteArray(reply.getRequestNumber());
-//            dataOutput.writeInt(requestNumberBytes.length);
-//            dataOutput.write(requestNumberBytes);
-//            byte[] resultBytes = MyByteUtils.toByteArray(reply.getResult());
-//            dataOutput.writeInt(resultBytes.length);
-//            dataOutput.write(resultBytes);
-//            
-//            dataOutput.close();
-//            
-//        } catch (IOException ex) {
-//            Logger.getLogger(ServerRunnable.class.getName()).log(Level.SEVERE, null, ex);
-//        } finally {
-//            try {
-//                dataOutput.close();
-//            } catch (IOException ex) {
-//                Logger.getLogger(ServerRunnable.class.getName()).log(Level.SEVERE, null, ex);
-//            }
-//        }
-//    }
 }

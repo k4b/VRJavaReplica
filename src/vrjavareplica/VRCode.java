@@ -14,19 +14,21 @@ import java.net.Socket;
  */
 public class VRCode implements Runnable{
     
+    protected int replicaID;
     protected int port;
     protected MessageProcessor messageProcessor;
     protected ServerSocket serverSocket = null;
     protected boolean      isStopped    = false;
     protected Thread       runningThread= null;
     
-    public VRCode(int port, MessageProcessor messageProcessor) {
+    public VRCode(int replicaID, int port, MessageProcessor messageProcessor) {
+        this.replicaID = replicaID;
         this.port = port;
         this.messageProcessor = messageProcessor;
     }
 
     public void run(){
-        System.out.println("Replica server started.") ;
+        LogWriter.log(replicaID, "Replica server started.") ;
         synchronized(this){
             this.runningThread = Thread.currentThread();
         }
@@ -37,16 +39,16 @@ public class VRCode implements Runnable{
                 clientSocket = this.serverSocket.accept();
             } catch (IOException e) {
                 if(isStopped()) {
-                    System.out.println("Replica server stopped.") ;
+                    LogWriter.log(replicaID, "Replica server stopped.") ;
                     return;
                 }
                 throw new RuntimeException("Error accepting client connection", e);
             }
             new Thread(
-                new ServerRunnable(clientSocket, messageProcessor)
+                new ServerRunnable(replicaID, clientSocket, messageProcessor)
             ).start();
         }
-        System.out.println("Server Stopped.") ;
+        LogWriter.log(replicaID, "Server Stopped.") ;
     }
 
 

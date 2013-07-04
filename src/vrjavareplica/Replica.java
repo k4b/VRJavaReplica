@@ -27,7 +27,7 @@ public class Replica {
     private ReplicaState state;
     private int opNumber;
     private ClientTable clientTable;
-    private Log log;
+    private ReplicaLog log;
     
     public Replica() {
         replicaTable = new ReplicaTable();
@@ -37,13 +37,33 @@ public class Replica {
         primary = replicaTable.get(0);
         viewNumber = 0;
         opNumber = 0;
-        log = new Log();
+        log = new ReplicaLog();
         System.out.println(identify());
         
         MessageProcessor messageProcessor = new MessageProcessor(this);
-        VRCode vrCode = new VRCode(port, messageProcessor);
+        VRCode vrCode = new VRCode(replicaID, port, messageProcessor);
         new Thread(vrCode).start();
     }
+    
+    public Replica(int id, String address, int port) {
+        this.replicaID = id;
+        this.ipAddress = address;
+        this.port = port;
+        replicaTable = new ReplicaTable();
+        clientTable = new ClientTable();
+        loadHosts();
+        primary = replicaTable.get(0);
+        viewNumber = 0;
+        opNumber = 0;
+        log = new ReplicaLog();
+        System.out.println(identify());
+        
+        MessageProcessor messageProcessor = new MessageProcessor(this);
+        VRCode vrCode = new VRCode(replicaID, port, messageProcessor);
+        new Thread(vrCode).start();
+    }
+    
+    
     
     public String identify() {
         String s = "";
@@ -162,11 +182,11 @@ public class Replica {
         this.clientTable = clientTable;
     }
 
-    public Log getLog() {
+    public ReplicaLog getLog() {
         return log;
     }
 
-    public void setLog(Log log) {
+    public void setLog(ReplicaLog log) {
         this.log = log;
     }
 

@@ -32,7 +32,7 @@ public class MessageProcessor {
     }
     
     private void processRequest(MessageRequest request, Socket clientSocket) {
-        System.out.println("Processing request...");
+        LogWriter.log(replica.getReplicaID(), "Processing request...");
         MessageReply reply = new MessageReply(4, request.getViewNumber(), request.getRequestNumber(), true);
         sendMessage(reply, clientSocket);
     }
@@ -40,8 +40,8 @@ public class MessageProcessor {
     private void sendMessage(MessageReply reply, Socket clientSocket) {
         DataOutputStream dataOutput = null;
         try {
-            System.out.println("Sending message:");
-            System.out.println(reply.toString());
+            LogWriter.log(replica.getReplicaID(), "Sending message:");
+            LogWriter.log(replica.getReplicaID(), reply.toString());
             
             dataOutput = new DataOutputStream(clientSocket.getOutputStream());
             byte[] messageIDBytes = MyByteUtils.toByteArray(reply.getMessageID());

@@ -11,6 +11,14 @@ import java.util.ArrayList;
  * @author karol
  */
 public class Replica {
+
+    public int getLastCommited() {
+        return lastCommited;
+    }
+
+    public void setLastCommited(int lastCommited) {
+        this.lastCommited = lastCommited;
+    }
     
     public enum ReplicaState { Normal, ViewChange, Recovering };
     private static final String PARAMETER_FILE_NAME = "Parameters.txt";
@@ -28,6 +36,7 @@ public class Replica {
     private int opNumber;
     private ClientTable clientTable;
     private ReplicaLog log;
+    private int lastCommited;
     
     public Replica() {
         replicaTable = new ReplicaTable();
@@ -38,6 +47,7 @@ public class Replica {
         viewNumber = 0;
         opNumber = 0;
         log = new ReplicaLog();
+        lastCommited = 0;
         System.out.println(identify());
         
         MessageProcessor messageProcessor = new MessageProcessor(this);
@@ -56,14 +66,13 @@ public class Replica {
         viewNumber = 0;
         opNumber = 0;
         log = new ReplicaLog();
+        lastCommited = 0;
         System.out.println(identify());
         
         MessageProcessor messageProcessor = new MessageProcessor(this);
         VRCode vrCode = new VRCode(replicaID, port, messageProcessor);
         new Thread(vrCode).start();
     }
-    
-    
     
     public String identify() {
         String s = "";
@@ -76,6 +85,10 @@ public class Replica {
             s += "Replica[" + rep.getReplicaID() + "] " + rep.getIpAddress() + ":" + rep.getPort() + NEWLINE;
         }
         return s;
+    }
+    
+    public void incrementOpNumber() {
+        opNumber++;
     }
             
     private boolean loadParameters() {

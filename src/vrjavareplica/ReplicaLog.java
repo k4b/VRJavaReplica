@@ -4,10 +4,12 @@
  */
 package vrjavareplica;
 
+import java.util.LinkedList;
+
 /**
  *
  * @author karol
  */
-public class ReplicaLog {
+public class ReplicaLog extends LinkedList<Message>{
     
 }

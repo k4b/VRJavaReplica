@@ -3,17 +3,20 @@ package vrjavareplica;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.StringTokenizer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * This class is used as utility to load data from files.
  * @author Karol
  */
-public class FileUtility {
+public class MyFileUtils {
 
 	/**
      * Reads data from specified file.
@@ -120,4 +123,34 @@ public class FileUtility {
             out.println(text);
             out.close();
         }
+    
+    public static boolean saveFile(String path, byte[] file ) {
+        FileOutputStream fos = null;
+        boolean result = false;
+        try {
+            fos = new FileOutputStream(path);
+            fos.write(file);
+            fos.close();
+        } catch (FileNotFoundException ex) {
+            Logger.getLogger(MyFileUtils.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IOException ex) {
+            Logger.getLogger(MyFileUtils.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            try {
+                fos.close();
+                result = true;
+            } catch (IOException ex) {
+                Logger.getLogger(MyFileUtils.class.getName()).log(Level.SEVERE, null, ex);
+            } finally {
+                return result;
+            }
+        }
+    }
+    
+    public static boolean deleteFile(String path) {
+        boolean result = false;
+        File file = new File(path);
+        result = file.delete();
+        return result;        
+    }
 }

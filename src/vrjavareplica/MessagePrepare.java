@@ -12,14 +12,14 @@ public class MessagePrepare extends Message{
     
     private MessageRequest request;
     private int viewNumber;
-    private int opeationNumber;
+    private int operationNumber;
     private int lastCommited;
     
-    public MessagePrepare(MessageRequest request, int viewNumber, int opeationNumber, int lastCommited ) {
+    public MessagePrepare(MessageRequest request, int viewNumber, int operationNumber, int lastCommited ) {
         setMessageID(Constants.PREPARE);
         this.request = request;
         this.viewNumber = viewNumber;
-        this.opeationNumber = opeationNumber;
+        this.operationNumber = operationNumber;
         this.lastCommited = lastCommited;
     }
     
@@ -31,7 +31,7 @@ public class MessagePrepare extends Message{
         if(request.getOperation() != null) {
             s += "Operation: " + request.getOperation().getOperationID() + Constants.NEWLINE;
         }
-        s += "Operation number: " + opeationNumber + Constants.NEWLINE;
+        s += "Operation number: " + operationNumber + Constants.NEWLINE;
         s += "View number: " + viewNumber + Constants.NEWLINE;
         s += "Last commited: " + lastCommited + Constants.NEWLINE;
         return s;
@@ -61,12 +61,12 @@ public class MessagePrepare extends Message{
         this.viewNumber = viewNumber;
     }
 
-    public int getOpeationNumber() {
-        return opeationNumber;
+    public int getOperationNumber() {
+        return operationNumber;
     }
 
-    public void setOpeationNumber(int opeationNumber) {
-        this.opeationNumber = opeationNumber;
+    public void setOperationNumber(int operationNumber) {
+        this.operationNumber = operationNumber;
     }
     
     

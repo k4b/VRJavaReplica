@@ -16,8 +16,8 @@ public class MessageReply extends Message{
     private int requestNumber;
     private boolean result;
     
-    public MessageReply(int messageID, int viewNumber, int requestNumber, boolean result) {
-        setMessageID(messageID);
+    public MessageReply(int viewNumber, int requestNumber, boolean result) {
+        setMessageID(Constants.REPLY);
         this.viewNumber = viewNumber;
         this.requestNumber = requestNumber;
         this.result = result;

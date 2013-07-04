@@ -29,4 +29,8 @@ public class Constants {
     public static final int RECOVERYRESPONSE = 9;
     public static final int CORRECTVIEWNUMBER = 10;
     public static final int COMMIT = 11;
+    
+    //operations
+    public static final int COPY = 1;
+    public static final int DELETE = 2;
 }

@@ -107,7 +107,6 @@ public class ServerRunnable implements Runnable{
             }
 
             request = new MessageRequest(
-                    messageID,
                     operation,
                     MyByteUtils.byteArrayToInt(clientIDBytes),
                     MyByteUtils.byteArrayToInt(requestNumberBytes),
@@ -180,7 +179,6 @@ public class ServerRunnable implements Runnable{
             }
 
             MessageRequest request = new MessageRequest(
-                    messageID,
                     operation,
                     MyByteUtils.byteArrayToInt(clientIDBytes),
                     MyByteUtils.byteArrayToInt(requestNumberBytes),

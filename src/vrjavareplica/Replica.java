@@ -37,6 +37,7 @@ public class Replica {
     private ClientTable clientTable;
     private ReplicaLog log;
     private int lastCommited;
+    private MessageProcessor messageProcessor;
     
     public Replica() {
         replicaTable = new ReplicaTable();
@@ -50,7 +51,7 @@ public class Replica {
         lastCommited = 0;
         System.out.println(identify());
         
-        MessageProcessor messageProcessor = new MessageProcessor(this);
+        messageProcessor = new MessageProcessor(this);
         VRCode vrCode = new VRCode(replicaID, port, messageProcessor);
         new Thread(vrCode).start();
     }
@@ -69,7 +70,7 @@ public class Replica {
         lastCommited = 0;
         System.out.println(identify());
         
-        MessageProcessor messageProcessor = new MessageProcessor(this);
+        messageProcessor = new MessageProcessor(this);
         VRCode vrCode = new VRCode(replicaID, port, messageProcessor);
         new Thread(vrCode).start();
     }
@@ -92,7 +93,7 @@ public class Replica {
     }
             
     private boolean loadParameters() {
-        ArrayList<ArrayList<String>> tokenizedLines = FileUtility.loadFile(PARAMETER_FILE_NAME);
+        ArrayList<ArrayList<String>> tokenizedLines = MyFileUtils.loadFile(PARAMETER_FILE_NAME);
         if(tokenizedLines.size() >= 3) {
             int repID = Integer.valueOf(tokenizedLines.get(0).get(0));
             String address = tokenizedLines.get(1).get(0);
@@ -111,7 +112,7 @@ public class Replica {
     }
     
     private boolean loadHosts() {
-        ArrayList<ArrayList<String>> tokenizedLines = FileUtility.loadFile(HOSTS_FILE_NAME);
+        ArrayList<ArrayList<String>> tokenizedLines = MyFileUtils.loadFile(HOSTS_FILE_NAME);
         if(tokenizedLines.size() > 0) {
             for(int i = 0; i < tokenizedLines.size(); i++) {
                 ArrayList<String> tokens = tokenizedLines.get(i);
@@ -211,5 +212,33 @@ public class Replica {
         this.port = port;
     }
     
+    public boolean executeRequest(ReplicaLogEntry entry) {
+        int operation = entry.getRequest().getOperation().getOperationID();
+        boolean result = false;
+        switch(operation) {
+            case Constants.COPY : 
+                result = executeCopy(entry.getRequest().getOperation());
+                break;
+            case Constants.DELETE : 
+                result = executeDelete(entry.getRequest().getOperation());
+                break;
+        }
+        this.getLog().removeFirst();
+        MessageReply reply = new MessageReply(this.getViewNumber(), entry.getRequest().getRequestNumber(), result);
+        messageProcessor.sendMessage(reply, entry.getClientsSocket());
+        return result;
+    }
     
+    private boolean executeCopy(Operation operation) {
+        boolean result = MyFileUtils.saveFile(operation.getPath(), operation.getFile());
+        LogWriter.log(port, "Executed copy file " + operation.getPath());
+        return result;
+    }
+    
+    private boolean executeDelete(Operation operation) {
+        //probably wrong path
+        boolean result = MyFileUtils.deleteFile(operation.getPath());
+        LogWriter.log(port, "Executed delete file " + operation.getPath());
+        return result;
+    }
 }

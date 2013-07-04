@@ -62,7 +62,10 @@ public class ReplicaClientRunnable implements Runnable{
                 MessagePrepare prepare = (MessagePrepare) message;
                 sendPrepare(prepare);
                 break;
-            
+            case Constants.PREPAREOK :
+                MessagePrepareOK prepareOK = (MessagePrepareOK) message;
+                sendPrepareOK(prepareOK);
+                break;
         }
     }
     
@@ -114,6 +117,37 @@ public class ReplicaClientRunnable implements Runnable{
             dataOutput.writeInt(replicaLastCommitedBytes.length);
             dataOutput.write(replicaLastCommitedBytes);
             
+            
+        } catch (IOException ex) {
+            Logger.getLogger(ReplicaClientRunnable.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            try {
+                dataOutput.flush();
+                dataOutput.close();
+                clientSocket.close();
+            } catch (IOException ex) {
+                Logger.getLogger(ReplicaClientRunnable.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+    }
+    
+    private void sendPrepareOK(MessagePrepareOK prepareOK) {
+        LogWriter.log(replica.getReplicaID(), "Sending message PREPAREOK" + Constants.NEWLINE + prepareOK.toString());
+        DataOutputStream dataOutput = null;
+        try {
+            dataOutput = new DataOutputStream(clientSocket.getOutputStream());
+            byte[] messageIDBytes = MyByteUtils.toByteArray(prepareOK.getMessageID());
+            dataOutput.writeInt(messageIDBytes.length);
+            dataOutput.write(messageIDBytes);
+            byte[] viewNumberBytes = MyByteUtils.toByteArray(prepareOK.getViewNumber());
+            dataOutput.writeInt(viewNumberBytes.length);
+            dataOutput.write(viewNumberBytes);
+            byte[] operationNumberBytes = MyByteUtils.toByteArray(prepareOK.getOperationNumber());
+            dataOutput.writeInt(operationNumberBytes.length);
+            dataOutput.write(operationNumberBytes);
+            byte[] replicaIDBytes = MyByteUtils.toByteArray(prepareOK.getReplicaID());
+            dataOutput.writeInt(replicaIDBytes.length);
+            dataOutput.write(replicaIDBytes);
             
         } catch (IOException ex) {
             Logger.getLogger(ReplicaClientRunnable.class.getName()).log(Level.SEVERE, null, ex);

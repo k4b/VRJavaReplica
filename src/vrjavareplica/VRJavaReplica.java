@@ -22,7 +22,7 @@ public class VRJavaReplica {
     }
     
     private static void startTestingReplicas(int number) {
-        ArrayList<ArrayList<String>> tokenizedLines = FileUtility.loadFile(HOSTS_FILE_NAME);
+        ArrayList<ArrayList<String>> tokenizedLines = MyFileUtils.loadFile(HOSTS_FILE_NAME);
         for(int i = 0; i < number; i++) {
             new Replica(i+1, tokenizedLines.get(i).get(0), new Integer(tokenizedLines.get(i).get(1)));
         }

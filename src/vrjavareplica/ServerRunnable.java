@@ -30,7 +30,7 @@ public class ServerRunnable implements Runnable{
 
     public void run() {
         try {            
-            //Colecting request
+            System.out.println("Collecting message");
             DataInputStream dataInput = new DataInputStream(clientSocket.getInputStream());
             int size = dataInput.readInt();
             byte[] requestIDBytes = new byte[size];
@@ -44,9 +44,13 @@ public class ServerRunnable implements Runnable{
             byte[] operationFile = null;
             if(byteArrayToInt(operationIDBytes) == 1) {
                 size = dataInput.readInt();
-                operationFile = new byte[size];
-                if(operationFile != null) {
-                    dataInput.read(operationPathBytes, 0, size);
+                if(size != 1) {
+                    operationFile = new byte[size];
+                    if(operationFile != null) {
+                        dataInput.read(operationPathBytes, 0, size);
+                    }
+                } else {
+                    dataInput.read();
                 }
             }
             size = dataInput.readInt();
@@ -70,6 +74,7 @@ public class ServerRunnable implements Runnable{
                     break;
                 case 2 :
                     operation = new Operation( new String(operationPathBytes));
+                    break;
             }
 
             MessageRequest request = new MessageRequest(
@@ -134,7 +139,7 @@ public class ServerRunnable implements Runnable{
     public static byte[] toByteArray(int value) {
         ByteBuffer buffer = ByteBuffer.allocate(4);
         //buffer.order(ByteOrder.BIG_ENDIAN); // optional, the initial order of a byte buffer is always BIG_ENDIAN.
-        buffer.putInt(0xAABBCCDD);
+        buffer.putInt(value);
         byte[] result = buffer.array();
         return result;
     }

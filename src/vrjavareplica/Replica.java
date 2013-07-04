@@ -15,6 +15,7 @@ public class Replica {
     public enum ReplicaState { Normal, ViewChange, Recovering };
     private static final String PARAMETER_FILE_NAME = "Parameters.txt";
     private static final String HOSTS_FILE_NAME = "Hosts.txt";
+    private static final String NEWLINE = System.getProperty("line.separator");
     
     
     private int replicaID;
@@ -37,8 +38,23 @@ public class Replica {
         viewNumber = 0;
         opNumber = 0;
         log = new Log();
+        System.out.println(identify());
+        
         VRCode vrCode = new VRCode(this);
         new Thread(vrCode).start();
+    }
+    
+    public String identify() {
+        String s = "";
+        s += "Replica App" + NEWLINE;
+        s += "ID: " + replicaID + NEWLINE;
+        s += "ipAddress: " + ipAddress + NEWLINE;
+        s += "port: " + port + NEWLINE;
+        s += "Hosts: " + NEWLINE;
+        for(ReplicaInfo rep : replicaTable) {
+            s += "Replica[" + rep.getReplicaID() + "] " + rep.getIpAddress() + ":" + rep.getPort() + NEWLINE;
+        }
+        return s;
     }
             
     private boolean loadParameters() {

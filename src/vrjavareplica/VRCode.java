@@ -14,13 +14,15 @@ import java.net.Socket;
  */
 public class VRCode implements Runnable{
     
-    private Replica replica;
+    protected int port;
+    protected MessageProcessor messageProcessor;
     protected ServerSocket serverSocket = null;
     protected boolean      isStopped    = false;
     protected Thread       runningThread= null;
     
-    public VRCode(Replica replica) {
-        this.replica = replica;
+    public VRCode(int port, MessageProcessor messageProcessor) {
+        this.port = port;
+        this.messageProcessor = messageProcessor;
     }
 
     public void run(){
@@ -41,7 +43,7 @@ public class VRCode implements Runnable{
                 throw new RuntimeException("Error accepting client connection", e);
             }
             new Thread(
-                new ServerRunnable(clientSocket, "Multithreaded Replica Server")
+                new ServerRunnable(clientSocket, messageProcessor)
             ).start();
         }
         System.out.println("Server Stopped.") ;
@@ -63,9 +65,9 @@ public class VRCode implements Runnable{
 
     private void openServerSocket() {
         try {
-            this.serverSocket = new ServerSocket(this.replica.getPort());
+            this.serverSocket = new ServerSocket(port);
         } catch (IOException e) {
-            throw new RuntimeException("Cannot open port " + this.replica.getPort(), e);
+            throw new RuntimeException("Cannot open port " + port, e);
         }
     }
     

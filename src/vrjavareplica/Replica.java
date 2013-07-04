@@ -40,7 +40,8 @@ public class Replica {
         log = new Log();
         System.out.println(identify());
         
-        VRCode vrCode = new VRCode(this);
+        MessageProcessor messageProcessor = new MessageProcessor(this);
+        VRCode vrCode = new VRCode(port, messageProcessor);
         new Thread(vrCode).start();
     }
     

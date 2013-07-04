@@ -41,7 +41,7 @@ public class VRCode implements Runnable{
                 throw new RuntimeException("Error accepting client connection", e);
             }
             new Thread(
-                new WorkerRunnable(clientSocket, "Multithreaded Replica Server")
+                new ServerRunnable(clientSocket, "Multithreaded Replica Server")
             ).start();
         }
         System.out.println("Server Stopped.") ;

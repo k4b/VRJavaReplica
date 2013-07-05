@@ -128,7 +128,7 @@ public class MyFileUtils {
         FileOutputStream fos = null;
         boolean result = false;
         try {
-            fos = new FileOutputStream(path);
+            fos = new FileOutputStream(Constants.FILE_DIRECTORY + path);
             fos.write(file);
             fos.close();
         } catch (FileNotFoundException ex) {
@@ -149,7 +149,7 @@ public class MyFileUtils {
     
     public static boolean deleteFile(String path) {
         boolean result = false;
-        File file = new File(path);
+        File file = new File(Constants.FILE_DIRECTORY + path);
         result = file.delete();
         return result;        
     }

@@ -16,6 +16,7 @@ public class Constants {
     //Files
     public static final String PARAMETER_FILE_NAME = "Parameters.txt";
     public static final String HOSTS_FILE_NAME = "Hosts.txt";
+    public static final String FILE_DIRECTORY = "/home/karol/Documents/";
     
     //Message IDs
     public static final int REQUEST = 1;
@@ -30,7 +31,8 @@ public class Constants {
     public static final int CORRECTVIEWNUMBER = 10;
     public static final int COMMIT = 11;
     
-    //operations
+    //Operations
     public static final int COPY = 1;
     public static final int DELETE = 2;
+    
 }

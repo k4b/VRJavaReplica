@@ -37,8 +37,8 @@ public class ServerRunnable implements Runnable{
             Object objectMessage = receiveMessage(messageID);
             
             messageProcessor.processMessage(messageID, objectMessage, clientSocket);
-            dataInput.close();
-            clientSocket.close();
+//            dataInput.close();
+//            clientSocket.close();
             
         } catch (IOException e) {
             //report exception somewhere.
@@ -50,16 +50,19 @@ public class ServerRunnable implements Runnable{
         Object object = null;
         switch(messageID) {
             case Constants.REQUEST :
-                object = receiveRequest(messageID);
+                object = receiveRequest();
                 break;
             case Constants.PREPARE :
-                object = receivePrepare(messageID);
+                object = receivePrepare();
                 break;
+            case Constants.PREPAREOK :
+            object = receivePrepareOK();
+            break;
         }
         return object;
     }
     
-    private MessageRequest receiveRequest(int messageID) {
+    private MessageRequest receiveRequest() {
         DataInputStream dataInput = null;
         MessageRequest request = null;
         try {
@@ -95,10 +98,14 @@ public class ServerRunnable implements Runnable{
             
             Operation operation = null;
             int operationID = MyByteUtils.byteArrayToInt(operationIDBytes);
+            String path = new String(operationPathBytes, "UTF-8");
+            if(path.contains("\n")) {
+                path = path.replaceAll("\n", ".");
+            }
             switch(operationID) {
                 case 1 :
                     operation = new Operation(
-                            new String(operationPathBytes),
+                            path,
                             operationFile);
                     break;
                 case 2 :
@@ -120,7 +127,7 @@ public class ServerRunnable implements Runnable{
         }
     }
     
-    private MessagePrepare receivePrepare(int messageID) {
+    private MessagePrepare receivePrepare() {
         DataInputStream dataInput = null;
         MessagePrepare prepare = null;
         try {
@@ -190,12 +197,41 @@ public class ServerRunnable implements Runnable{
                     MyByteUtils.byteArrayToInt(replicaOperationNumberBytes), 
                     MyByteUtils.byteArrayToInt(replicaLastCommitedBytes));
             
-            LogWriter.log(replicaID, "Received prepare:" + Constants.NEWLINE + prepare.toString());
+            LogWriter.log(replicaID, "Received PREPARE:" + Constants.NEWLINE + prepare.toString());
             
         } catch (IOException ex) {
             Logger.getLogger(ServerRunnable.class.getName()).log(Level.SEVERE, null, ex);
         } finally {
             return prepare;
+        }
+    }
+    
+    private MessagePrepareOK receivePrepareOK() {
+        DataInputStream dataInput;
+        MessagePrepareOK prepareOK = null;
+        try {
+            dataInput = new DataInputStream(clientSocket.getInputStream());
+            int size = dataInput.readInt();
+            byte[] viewNumberBytes = new byte[size];
+            dataInput.read(viewNumberBytes, 0, size);
+            size = dataInput.readInt();
+            byte[] operationNumberBytes = new byte[size];
+            dataInput.read(operationNumberBytes, 0, size);
+            size = dataInput.readInt();
+            byte[] replicaIDBytes = new byte[size];
+            dataInput.read(replicaIDBytes, 0, size);
+            
+            prepareOK = new MessagePrepareOK(
+                    MyByteUtils.byteArrayToInt(viewNumberBytes), 
+                    MyByteUtils.byteArrayToInt(operationNumberBytes), 
+                    MyByteUtils.byteArrayToInt(replicaIDBytes));
+            
+            LogWriter.log(replicaID, "Received PREPAREOK:" + Constants.NEWLINE + prepareOK.toString());
+            
+        } catch (IOException ex) {
+            Logger.getLogger(ServerRunnable.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            return prepareOK;
         }
     }
 }

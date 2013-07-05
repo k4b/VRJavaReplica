@@ -4,7 +4,10 @@
  */
 package vrjavareplica;
 
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -21,7 +24,14 @@ public class MyByteUtils {
     }
     
     public static byte[] toByteArray(String text) {
-        return text.getBytes();
+        byte[] value = null;
+        try {
+            value = text.getBytes("UTF-8");
+        } catch (UnsupportedEncodingException ex) {
+            Logger.getLogger(MyByteUtils.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            return value;
+        }
     }
     
     public static byte[] toByteArray(boolean value) {

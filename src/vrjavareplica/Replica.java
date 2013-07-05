@@ -45,7 +45,7 @@ public class Replica {
         loadParameters();
         loadHosts();
         primary = replicaTable.get(0);
-        viewNumber = 0;
+        viewNumber = 1;
         opNumber = 0;
         log = new ReplicaLog();
         lastCommited = 0;
@@ -64,7 +64,7 @@ public class Replica {
         clientTable = new ClientTable();
         loadHosts();
         primary = replicaTable.get(0);
-        viewNumber = 0;
+        viewNumber = 1;
         opNumber = 0;
         log = new ReplicaLog();
         lastCommited = 0;
@@ -230,15 +230,16 @@ public class Replica {
     }
     
     private boolean executeCopy(Operation operation) {
-        boolean result = MyFileUtils.saveFile(operation.getPath(), operation.getFile());
-        LogWriter.log(port, "Executed copy file " + operation.getPath());
+        String path = replicaID + "-" + operation.getPath();
+        boolean result = MyFileUtils.saveFile(path, operation.getFile());
+        LogWriter.log(replicaID, "Executed copy file " + operation.getPath() + " with result = " + result);
         return result;
     }
     
     private boolean executeDelete(Operation operation) {
-        //probably wrong path
-        boolean result = MyFileUtils.deleteFile(operation.getPath());
-        LogWriter.log(port, "Executed delete file " + operation.getPath());
+        String path = replicaID + "-" + operation.getPath();
+        boolean result = MyFileUtils.deleteFile(path);
+        LogWriter.log(replicaID, "Executed delete file " + operation.getPath() + " with result = " + result);
         return result;
     }
 }

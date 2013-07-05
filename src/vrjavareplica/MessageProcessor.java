@@ -31,11 +31,11 @@ public class MessageProcessor {
                 break;
             case Constants.PREPARE : 
                 MessagePrepare prepare = (MessagePrepare) message;
-                processPrepare(prepare, clientSocket);
+                processPrepare(prepare);
                 break;
             case Constants.PREPAREOK : 
                 MessagePrepareOK prepareOK = (MessagePrepareOK) message;
-                processPrepareOK(prepareOK, clientSocket);
+                processPrepareOK(prepareOK);
                 break;
         }
     }
@@ -55,26 +55,32 @@ public class MessageProcessor {
         sendMessage(prepare);        
     }
     
-    private void processPrepare(MessagePrepare prepare, Socket clientSocket) {
+    private void processPrepare(MessagePrepare prepare) {
         LogWriter.log(replica.getReplicaID(), "Processing PREPARE...");
         checkEarlierRequestsEntries();
         
         replica.getLog().addLast(new ReplicaLogEntry(prepare.getRequest(), prepare.getOperationNumber()));
         MessagePrepareOK prepareOK = new MessagePrepareOK(
                 replica.getViewNumber(), 
-                replica.getOpNumber(), 
+                prepare.getOperationNumber(), 
                 replica.getReplicaID());
         sendMessagePrepareOK(prepareOK);
     }
     
-    private void processPrepareOK(MessagePrepareOK prepareOK, Socket clientSocket) {
+    private void processPrepareOK(MessagePrepareOK prepareOK) {
         LogWriter.log(replica.getReplicaID(), "Processing PREPAREOK...");
         ReplicaLogEntry entry = replica.getLog().findEntry(prepareOK.getOperationNumber());
         if(entry == null) {
             return;
         } else {
             entry.increaseCommitsNumber();
-            checkIfCanBeExecuted(replica.getLog().findEntry(prepareOK.getOperationNumber()));
+            LogWriter.log(replica.getReplicaID(), 
+                    "Operation " + entry.getOperationNumber() + " commits " 
+                    + entry.getCommitsNumber() + "/" + replica.getReplicaTable().size());
+            boolean canBeExecuted = checkIfCanBeExecuted(replica.getLog().findEntry(prepareOK.getOperationNumber()));
+            if(canBeExecuted) {
+                replica.executeRequest(entry);
+            }
         }
         
     }
@@ -111,13 +117,17 @@ public class MessageProcessor {
     
     private void sendMessage(MessagePrepare prepare) {
         for(int i = 0; i < replica.getReplicaTable().size(); i++) {
-            new Thread(new ReplicaClientRunnable(
-                    replica,
-                    replica.getReplicaTable().get(i).getIpAddress(), 
-                    replica.getReplicaTable().get(i).getPort(), 
-                    Constants.PREPARE, 
-                    prepare)
-                ).start();
+            if(i+1 == replica.getReplicaID()) {
+                //don't sent to myself
+            } else {
+                new Thread(new ReplicaClientRunnable(
+                        replica,
+                        replica.getReplicaTable().get(i).getIpAddress(), 
+                        replica.getReplicaTable().get(i).getPort(), 
+                        Constants.PREPARE, 
+                        prepare)
+                    ).start();
+            }
         }
         
     }
@@ -149,7 +159,6 @@ public class MessageProcessor {
             boolean isFirst = entry.equals(replica.getLog().getFirst());
             boolean result = false;
             if(isFirst && isCommitsSufficient) {
-                replica.executeRequest(entry);
                 result = true;
             }
             return result;

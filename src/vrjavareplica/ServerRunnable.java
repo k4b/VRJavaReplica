@@ -79,7 +79,7 @@ public class ServerRunnable implements Runnable{
                 if(size != 1) {
                     operationFile = new byte[size];
                     if(operationFile != null) {
-                        dataInput.read(operationPathBytes, 0, size);
+                        dataInput.read(operationFile, 0, size);
                     }
                 } else {
                     dataInput.read();

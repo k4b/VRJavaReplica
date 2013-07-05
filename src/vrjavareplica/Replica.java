@@ -5,6 +5,7 @@
 package vrjavareplica;
 
 import java.util.ArrayList;
+import java.util.NoSuchElementException;
 
 /**
  *
@@ -223,9 +224,18 @@ public class Replica {
                 result = executeDelete(entry.getRequest().getOperation());
                 break;
         }
-        this.getLog().removeFirst();
-        MessageReply reply = new MessageReply(this.getViewNumber(), entry.getRequest().getRequestNumber(), result);
-        messageProcessor.sendMessage(reply, entry.getClientsSocket());
+        try {
+            ReplicaLogEntry firstEntry = log.getFirst();
+            if(entry.equals(firstEntry)) {
+                log.removeFirst();
+            }
+        } catch (NoSuchElementException e) {
+            //do nothing
+        }
+        if(checkIsPrimary()) {
+            MessageReply reply = new MessageReply(this.getViewNumber(), entry.getRequest().getRequestNumber(), result);
+            messageProcessor.sendMessage(reply, entry.getClientsSocket());
+        }
         return result;
     }
     
@@ -241,5 +251,13 @@ public class Replica {
         boolean result = MyFileUtils.deleteFile(path);
         LogWriter.log(replicaID, "Executed delete file " + operation.getPath() + " with result = " + result);
         return result;
+    }
+    
+    public boolean checkIsPrimary() {
+        if(this.ipAddress.equals(this.primary.getIpAddress()) && this.port == this.primary.getPort()) {
+            return true;
+        } else {
+            return false;
+        }
     }
 }

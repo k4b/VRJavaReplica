@@ -145,7 +145,7 @@ public class ServerRunnable implements Runnable{
                 if(size != 1) {
                     operationFile = new byte[size];
                     if(operationFile != null) {
-                        dataInput.read(operationPathBytes, 0, size);
+                        dataInput.read(operationFile, 0, size);
                     }
                 } else {
                     dataInput.read();
@@ -174,10 +174,15 @@ public class ServerRunnable implements Runnable{
             
             Operation operation = null;
             int operationID = MyByteUtils.byteArrayToInt(operationIDBytes);
+            String path = new String(operationPathBytes, "UTF-8");
+            if(path.contains("\n")) {
+                path = path.replaceAll("\n", ".");
+            }
+            
             switch(operationID) {
                 case 1 :
                     operation = new Operation(
-                            new String(operationPathBytes),
+                            path,
                             operationFile);
                     break;
                 case 2 :

@@ -65,6 +65,8 @@ public class MessageProcessor {
                 prepare.getOperationNumber(), 
                 replica.getReplicaID());
         sendMessagePrepareOK(prepareOK);
+        
+        processLastCommited(prepare.getLastCommited());
     }
     
     private void processPrepareOK(MessagePrepareOK prepareOK) {
@@ -84,6 +86,17 @@ public class MessageProcessor {
             }
         }
         
+    }
+    
+    private void processLastCommited(int lastCommited) {
+        if(replica.getIpAddress() != replica.getPrimary().getIpAddress() 
+                && replica.getPort() != replica.getPrimary().getPort()) {
+            ReplicaLogEntry entry = replica.getLog().findEntry(lastCommited);
+            boolean isFirst = checkIfIsFirst(entry);
+            if(isFirst) {
+                replica.executeRequest(entry);
+            }
+        }        
     }
     
     public void sendMessage(MessageReply reply, Socket clientSocket) {
@@ -163,6 +176,15 @@ public class MessageProcessor {
                 result = true;
             }
             return result;
+        }
+    }
+    
+    private boolean checkIfIsFirst(ReplicaLogEntry entry) {
+        if(entry == null) {
+            return false;
+        } else {
+            boolean isFirst = entry.equals(replica.getLog().getFirst());
+            return isFirst;
         }
     }
 }

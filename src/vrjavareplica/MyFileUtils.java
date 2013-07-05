@@ -125,12 +125,16 @@ public class MyFileUtils {
         }
     
     public static boolean saveFile(String path, byte[] file ) {
+        path = Constants.FILE_DIRECTORY + path;
         FileOutputStream fos = null;
         boolean result = false;
         try {
-            fos = new FileOutputStream(Constants.FILE_DIRECTORY + path);
+            File someFile = new File(path);
+            fos = new FileOutputStream(someFile);
             fos.write(file);
+            fos.flush();
             fos.close();
+            result = true;
         } catch (FileNotFoundException ex) {
             Logger.getLogger(MyFileUtils.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IOException ex) {
@@ -138,7 +142,6 @@ public class MyFileUtils {
         } finally {
             try {
                 fos.close();
-                result = true;
             } catch (IOException ex) {
                 Logger.getLogger(MyFileUtils.class.getName()).log(Level.SEVERE, null, ex);
             } finally {

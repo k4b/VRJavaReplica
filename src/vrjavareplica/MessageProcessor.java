@@ -80,6 +80,7 @@ public class MessageProcessor {
             boolean canBeExecuted = checkIfCanBeExecuted(replica.getLog().findEntry(prepareOK.getOperationNumber()));
             if(canBeExecuted) {
                 replica.executeRequest(entry);
+                replica.setLastCommited(prepareOK.getOperationNumber());
             }
         }
         

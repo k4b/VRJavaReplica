@@ -224,17 +224,24 @@ public class Replica {
                 result = executeDelete(entry.getRequest().getOperation());
                 break;
         }
-        try {
-            ReplicaLogEntry firstEntry = log.getFirst();
-            if(entry.equals(firstEntry)) {
-                log.removeFirst();
+        
+        if(result) {
+            try {
+                ReplicaLogEntry firstEntry = log.peek(); //retrieves but doesn't remove first element in the list
+                if(entry.equals(firstEntry)) {
+                    log.removeFirst();
+                }
+                if(checkIsPrimary()) {
+                    MessageReply reply = new MessageReply(this.getViewNumber(), entry.getRequest().getRequestNumber(), result);
+                    messageProcessor.sendMessage(reply, entry.getClientsSocket());
+                }
+                ReplicaLogEntry nextEntry = log.peek(); //retrieves but doesn't remove first element in the list
+                if(nextEntry != null && nextEntry.isIsCommited()) {
+                    executeRequest(nextEntry);
+                }
+            } catch (NoSuchElementException e) {
+                e.printStackTrace();
             }
-        } catch (NoSuchElementException e) {
-            //do nothing
-        }
-        if(checkIsPrimary()) {
-            MessageReply reply = new MessageReply(this.getViewNumber(), entry.getRequest().getRequestNumber(), result);
-            messageProcessor.sendMessage(reply, entry.getClientsSocket());
         }
         return result;
     }

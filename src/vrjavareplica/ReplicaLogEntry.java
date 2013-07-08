@@ -18,21 +18,21 @@ public class ReplicaLogEntry {
      * Number of replicas that sent PREPAREOK message for this request
      */
     private int commitsNumber;
-    private boolean canBeExecuted;
+    private boolean isCommited;
     private Socket clientsSocket;
     
     public ReplicaLogEntry(MessageRequest request, int operationNumber) {
         this.request = request;
         this.operationNumber = operationNumber;
         this.commitsNumber = 0;
-        this.canBeExecuted = false;
+        this.isCommited = false;
     }
     
     public ReplicaLogEntry(MessageRequest request, int operationNumber, Socket clientSocket) {
         this.request = request;
         this.operationNumber = operationNumber;
         this.commitsNumber = 0;
-        this.canBeExecuted = false;
+        this.isCommited = false;
         this.clientsSocket = clientSocket;
     }
     
@@ -52,12 +52,12 @@ public class ReplicaLogEntry {
         return commitsNumber;
     }
 
-    public boolean isCanBeExecuted() {
-        return canBeExecuted;
+    synchronized public boolean isIsCommited() {
+        return isCommited;
     }
 
-    public void setCanBeExecuted(boolean canBeExecuted) {
-        this.canBeExecuted = canBeExecuted;
+    synchronized public void setIsCommited(boolean isCommited) {
+        this.isCommited = isCommited;
     }
 
     public Socket getClientsSocket() {

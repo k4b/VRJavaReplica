@@ -35,7 +35,7 @@ public class MessageProcessor {
                 break;
             case Constants.PREPAREOK : 
                 MessagePrepareOK prepareOK = (MessagePrepareOK) message;
-                processPrepareOK(prepareOK);
+                processPrepareOK2(prepareOK);
                 break;
         }
     }
@@ -56,8 +56,13 @@ public class MessageProcessor {
     }
     
     private void processPrepare(MessagePrepare prepare) {
+        try {
+            Thread.sleep(1000*(long)Math.random()*15);
+        } catch (InterruptedException ex) {
+            Logger.getLogger(MessageProcessor.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
         LogWriter.log(replica.getReplicaID(), "Processing PREPARE...");
-        checkEarlierRequestsEntries();
         
         replica.getLog().addLast(new ReplicaLogEntry(prepare.getRequest(), prepare.getOperationNumber()));
         MessagePrepareOK prepareOK = new MessagePrepareOK(
@@ -69,34 +74,66 @@ public class MessageProcessor {
         processLastCommited(prepare.getLastCommited());
     }
     
-    private void processPrepareOK(MessagePrepareOK prepareOK) {
+    private void processPrepareOK2(MessagePrepareOK prepareOK) {
         LogWriter.log(replica.getReplicaID(), "Processing PREPAREOK...");
         ReplicaLogEntry entry = replica.getLog().findEntry(prepareOK.getOperationNumber());
         if(entry == null) {
+            //this is late prepareOK, not needed
+            LogWriter.log(replica.getReplicaID(), "PREPAREOK - no such entry!");
             return;
         } else {
             entry.increaseCommitsNumber();
             LogWriter.log(replica.getReplicaID(), 
                     "Operation " + entry.getOperationNumber() + " commits " 
-                    + entry.getCommitsNumber() + "/" + replica.getReplicaTable().size());
-            boolean canBeExecuted = checkIfCanBeExecuted(replica.getLog().findEntry(prepareOK.getOperationNumber()));
-            if(canBeExecuted) {
-                replica.executeRequest(entry);
-                replica.setLastCommited(prepareOK.getOperationNumber());
+                    + entry.getCommitsNumber() + "/" + (replica.getReplicaTable().size() - 1));
+            if(isCommitsSufficient(entry)) {
+                if(isFirstInLog(entry)) {
+                    replica.executeRequest(entry);
+                    replica.setLastCommited(prepareOK.getOperationNumber());
+                } else {
+                    entry.setIsCommited(true);
+                }
             }
         }
-        
     }
     
+//    private void processPrepareOK(MessagePrepareOK prepareOK) {
+//        LogWriter.log(replica.getReplicaID(), "Processing PREPAREOK...");
+//        ReplicaLogEntry entry = replica.getLog().findEntry(prepareOK.getOperationNumber());
+//        if(entry == null) {
+//            return;
+//        } else {
+//            entry.increaseCommitsNumber();
+//            LogWriter.log(replica.getReplicaID(), 
+//                    "Operation " + entry.getOperationNumber() + " commits " 
+//                    + entry.getCommitsNumber() + "/" + replica.getReplicaTable().size());
+////            double treshold = entry.getCommitsNumber()/replica.getReplicaTable().size();
+////            if(treshold > 0.5) {
+//                if(entry.isIsExecuted() == false) {
+//                    boolean canBeExecuted = isCommitsSufficient(replica.getLog().findEntry(prepareOK.getOperationNumber()));
+//                    if(canBeExecuted) {
+//                        replica.executeRequest(entry);
+//                        replica.setLastCommited(prepareOK.getOperationNumber());
+//                        entry.setIsExecuted(true);
+//                    }
+//                }
+////            }
+//        }
+//        
+//    }
+    
     private void processLastCommited(int lastCommited) {
-        if(replica.getIpAddress() != replica.getPrimary().getIpAddress() 
-                && replica.getPort() != replica.getPrimary().getPort()) {
-            ReplicaLogEntry entry = replica.getLog().findEntry(lastCommited);
-            boolean isFirst = checkIfIsFirst(entry);
-            if(isFirst) {
-                replica.executeRequest(entry);
+        if(lastCommited > 0) {
+            if(!replica.getIpAddress().equals(replica.getPrimary().getIpAddress()) 
+            && replica.getPort() != replica.getPrimary().getPort()) {
+                ReplicaLogEntry entry = replica.getLog().findEntry(lastCommited);
+                if(isFirstInLog(entry)) {
+                    replica.executeRequest(entry);
+                } else {
+                    entry.setIsCommited(true);
+                }
             }
-        }        
+        }
     }
     
     public void sendMessage(MessageReply reply, Socket clientSocket) {
@@ -122,7 +159,9 @@ public class MessageProcessor {
             Logger.getLogger(ServerRunnable.class.getName()).log(Level.SEVERE, null, ex);
         } finally {
             try {
-                dataOutput.close();
+                if(dataOutput != null) {
+                    dataOutput.close();
+                }
             } catch (IOException ex) {
                 Logger.getLogger(ServerRunnable.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -131,9 +170,7 @@ public class MessageProcessor {
     
     private void sendMessage(MessagePrepare prepare) {
         for(int i = 0; i < replica.getReplicaTable().size(); i++) {
-            if(i+1 == replica.getReplicaID()) {
-                //don't sent to myself
-            } else {
+            if(i+1 != replica.getReplicaID()) { //not sending to primary
                 new Thread(new ReplicaClientRunnable(
                         replica,
                         replica.getReplicaTable().get(i).getIpAddress(), 
@@ -143,7 +180,6 @@ public class MessageProcessor {
                     ).start();
             }
         }
-        
     }
     
     private void sendMessagePrepareOK(MessagePrepareOK prepareOK) {
@@ -156,30 +192,20 @@ public class MessageProcessor {
             ).start();
     }
     
-    private void checkEarlierRequestsEntries() {
-        
-    }
-    
-    private boolean checkIfCanBeExecuted( ReplicaLogEntry entry ) {
-        if(entry.isCanBeExecuted()) {
+    private boolean isCommitsSufficient( ReplicaLogEntry entry ) {
+        if(entry.isIsCommited()) {
             return true;
         } else {
             //check if number of commits is sufficient
-            boolean isCommitsSufficient = entry.getCommitsNumber() > (replica.getReplicaTable().size()/2);
+            boolean isCommitsSufficient = (entry.getCommitsNumber()+1) > (replica.getReplicaTable().size()/2);
             if(isCommitsSufficient) {
-                entry.setCanBeExecuted(true);
+                entry.setIsCommited(true);
             }
-            //check if is first in queue
-            boolean isFirst = entry.equals(replica.getLog().getFirst());
-            boolean result = false;
-            if(isFirst && isCommitsSufficient) {
-                result = true;
-            }
-            return result;
+            return isCommitsSufficient;
         }
     }
     
-    private boolean checkIfIsFirst(ReplicaLogEntry entry) {
+    private boolean isFirstInLog(ReplicaLogEntry entry) {
         if(entry == null) {
             return false;
         } else {

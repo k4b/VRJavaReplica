@@ -19,6 +19,7 @@ public class VRJavaReplica {
      */
     public static void main(String[] args) {
         startTestingReplicas(3);
+//        startReplica();
     }
     
     private static void startTestingReplicas(int number) {

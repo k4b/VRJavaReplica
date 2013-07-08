@@ -24,13 +24,12 @@ public class ReplicaLog extends LinkedList<ReplicaLogEntry>{
     }
     
     public ReplicaLogEntry findEntry(int operationNumber) {
-        ReplicaLogEntry entry = null;
         for(int i = 0; i < this.size(); i++) {
             ReplicaLogEntry e = this.get(i);
             if(e.getOperationNumber() == operationNumber) {
-                entry = e;
+                return e;
             }
         }
-        return entry;
+        return null;
     }
 }

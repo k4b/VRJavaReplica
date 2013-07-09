@@ -46,7 +46,7 @@ public class ServerRunnable implements Runnable{
         }
     }
     
-    private Object receiveMessage(int messageID) {
+    private synchronized Object receiveMessage(int messageID) {
         Object object = null;
         switch(messageID) {
             case Constants.REQUEST :

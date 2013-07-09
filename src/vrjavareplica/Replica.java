@@ -213,7 +213,7 @@ public class Replica {
         this.port = port;
     }
     
-    public boolean executeRequest(ReplicaLogEntry entry) {
+    public synchronized boolean executeRequest(ReplicaLogEntry entry) {
         int operation = entry.getRequest().getOperation().getOperationID();
         boolean result = false;
         switch(operation) {

@@ -52,11 +52,11 @@ public class ReplicaLogEntry {
         return commitsNumber;
     }
 
-    synchronized public boolean isIsCommited() {
+    public boolean isIsCommited() {
         return isCommited;
     }
 
-    synchronized public void setIsCommited(boolean isCommited) {
+    public void setIsCommited(boolean isCommited) {
         this.isCommited = isCommited;
     }
 

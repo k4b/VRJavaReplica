@@ -7,7 +7,6 @@ package vrjavareplica;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
-import java.sql.PreparedStatement;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -23,7 +22,7 @@ public class MessageProcessor {
         this.replica = replica;
     }
     
-    public void processMessage(int messageID, Object message, Socket clientSocket) {
+    public synchronized void processMessage(int messageID, Object message, Socket clientSocket) {
         switch(messageID) {
             case Constants.REQUEST : 
                 MessageRequest request = (MessageRequest) message;
@@ -125,7 +124,7 @@ public class MessageProcessor {
     private void processLastCommited(int lastCommited) {
         if(lastCommited > 0) {
             if(!replica.getIpAddress().equals(replica.getPrimary().getIpAddress()) 
-            && replica.getPort() != replica.getPrimary().getPort()) {
+            || replica.getPort() != replica.getPrimary().getPort()) {
                 ReplicaLogEntry entry = replica.getLog().findEntry(lastCommited);
                 if(isFirstInLog(entry)) {
                     replica.executeRequest(entry);

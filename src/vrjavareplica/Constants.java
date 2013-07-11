@@ -17,6 +17,7 @@ public class Constants {
     public static final String PARAMETER_FILE_NAME = "Parameters.txt";
     public static final String HOSTS_FILE_NAME = "Hosts.txt";
     public static final String FILE_DIRECTORY = "/home/karol/Documents/";
+    public static final String WIN_FILE_DIRECTORY = "C:\\Users\\Karol\\Documents\\VRProjekt\\";
     
     //Message IDs
     public static final int REQUEST = 1;

@@ -55,13 +55,13 @@ public class MessageProcessor {
     }
     
     private void processPrepare(MessagePrepare prepare) {
-        try {
-            Thread.sleep(1000*(long)Math.random()*15);
-        } catch (InterruptedException ex) {
-            Logger.getLogger(MessageProcessor.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        
+//        try {
+//            Thread.sleep(1000*(long)Math.random()*15);
+//        } catch (InterruptedException ex) {
+//            Logger.getLogger(MessageProcessor.class.getName()).log(Level.SEVERE, null, ex);
+//        }
         LogWriter.log(replica.getReplicaID(), "Processing PREPARE...");
+        restartTimeoutChecker();
         
         replica.getLog().addLast(new ReplicaLogEntry(prepare.getRequest(), prepare.getOperationNumber()));
         MessagePrepareOK prepareOK = new MessagePrepareOK(
@@ -95,31 +95,6 @@ public class MessageProcessor {
             }
         }
     }
-    
-//    private void processPrepareOK(MessagePrepareOK prepareOK) {
-//        LogWriter.log(replica.getReplicaID(), "Processing PREPAREOK...");
-//        ReplicaLogEntry entry = replica.getLog().findEntry(prepareOK.getOperationNumber());
-//        if(entry == null) {
-//            return;
-//        } else {
-//            entry.increaseCommitsNumber();
-//            LogWriter.log(replica.getReplicaID(), 
-//                    "Operation " + entry.getOperationNumber() + " commits " 
-//                    + entry.getCommitsNumber() + "/" + replica.getReplicaTable().size());
-////            double treshold = entry.getCommitsNumber()/replica.getReplicaTable().size();
-////            if(treshold > 0.5) {
-//                if(entry.isIsExecuted() == false) {
-//                    boolean canBeExecuted = isCommitsSufficient(replica.getLog().findEntry(prepareOK.getOperationNumber()));
-//                    if(canBeExecuted) {
-//                        replica.executeRequest(entry);
-//                        replica.setLastCommited(prepareOK.getOperationNumber());
-//                        entry.setIsExecuted(true);
-//                    }
-//                }
-////            }
-//        }
-//        
-//    }
     
     private void processLastCommited(int lastCommited) {
         if(lastCommited > 0) {
@@ -211,5 +186,9 @@ public class MessageProcessor {
             boolean isFirst = entry.equals(replica.getLog().getFirst());
             return isFirst;
         }
+    }
+    
+    private void restartTimeoutChecker() {
+        replica.getTimeoutChecker().restart();
     }
 }

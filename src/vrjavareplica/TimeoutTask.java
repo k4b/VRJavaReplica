@@ -18,7 +18,7 @@ class TimeoutTask implements Callable<String> {
     }
     @Override
     public String call() throws Exception {
-        Thread.sleep(timeout*1000); // Just to demo a long running task of 4 seconds.
+        Thread.sleep(timeout*1000);
         return "true";
     }
 }

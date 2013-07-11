@@ -11,16 +11,8 @@ import java.util.NoSuchElementException;
  *
  * @author karol
  */
-public class Replica {
+public class Replica implements TimeoutListener {
 
-    public int getLastCommited() {
-        return lastCommited;
-    }
-
-    public void setLastCommited(int lastCommited) {
-        this.lastCommited = lastCommited;
-    }
-    
     public enum ReplicaState { Normal, ViewChange, Recovering };
     private static final String PARAMETER_FILE_NAME = "Parameters.txt";
     private static final String HOSTS_FILE_NAME = "Hosts.txt";
@@ -39,6 +31,8 @@ public class Replica {
     private ReplicaLog log;
     private int lastCommited;
     private MessageProcessor messageProcessor;
+    private TimeoutChecker timeoutChecker;
+    private int timeout = 30;
     
     public Replica() {
         replicaTable = new ReplicaTable();
@@ -52,6 +46,8 @@ public class Replica {
         lastCommited = 0;
         System.out.println(identify());
         
+        
+        startTimoutChecker();
         messageProcessor = new MessageProcessor(this);
         VRCode vrCode = new VRCode(replicaID, port, messageProcessor);
         new Thread(vrCode).start();
@@ -71,9 +67,18 @@ public class Replica {
         lastCommited = 0;
         System.out.println(identify());
         
+        startTimoutChecker();
         messageProcessor = new MessageProcessor(this);
         VRCode vrCode = new VRCode(replicaID, port, messageProcessor);
         new Thread(vrCode).start();
+    }
+    
+    private void startTimoutChecker() {
+        if(!checkIsPrimary()) {
+            timeoutChecker = new TimeoutChecker(timeout);
+            timeoutChecker.addTimeoutListener(this);
+            timeoutChecker.start();
+        }
     }
     
     public String identify() {
@@ -213,6 +218,18 @@ public class Replica {
         this.port = port;
     }
     
+    public int getLastCommited() {
+        return lastCommited;
+    }
+
+    public void setLastCommited(int lastCommited) {
+        this.lastCommited = lastCommited;
+    }
+    
+    public TimeoutChecker getTimeoutChecker() {
+        return timeoutChecker;
+    }
+    
     public synchronized boolean executeRequest(ReplicaLogEntry entry) {
         int operation = entry.getRequest().getOperation().getOperationID();
         boolean result = false;
@@ -266,5 +283,10 @@ public class Replica {
         } else {
             return false;
         }
+    }
+    
+    @Override
+    public void timeout() {
+        LogWriter.log(replicaID, "Timeout!");
     }
 }

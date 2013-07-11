@@ -125,7 +125,7 @@ public class MyFileUtils {
         }
     
     public static boolean saveFile(String path, byte[] file ) {
-        path = Constants.FILE_DIRECTORY + path;
+        path = Constants.WIN_FILE_DIRECTORY + path;
         FileOutputStream fos = null;
         boolean result = false;
         try {
@@ -152,7 +152,7 @@ public class MyFileUtils {
     
     public static boolean deleteFile(String path) {
         boolean result = false;
-        File file = new File(Constants.FILE_DIRECTORY + path);
+        File file = new File(Constants.WIN_FILE_DIRECTORY + path);
         result = file.delete();
         return result;        
     }

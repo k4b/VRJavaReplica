@@ -32,7 +32,7 @@ public class Replica implements TimeoutListener {
     private int lastCommited;
     private MessageProcessor messageProcessor;
     private TimeoutChecker timeoutChecker;
-    private int timeout = 30;
+    private int timeout = 10;
     
     public Replica() {
         replicaTable = new ReplicaTable();
@@ -74,7 +74,7 @@ public class Replica implements TimeoutListener {
     }
     
     private void startTimoutChecker() {
-        if(!checkIsPrimary()) {
+        if(!isPrimary()) {
             timeoutChecker = new TimeoutChecker(timeout);
             timeoutChecker.addTimeoutListener(this);
             timeoutChecker.start();
@@ -248,9 +248,9 @@ public class Replica implements TimeoutListener {
                 if(entry.equals(firstEntry)) {
                     log.removeFirst();
                 }
-                if(checkIsPrimary()) {
+                if(isPrimary()) {
                     MessageReply reply = new MessageReply(this.getViewNumber(), entry.getRequest().getRequestNumber(), result);
-                    messageProcessor.sendMessage(reply, entry.getClientsSocket());
+                    messageProcessor.sendMessage(reply, entry.getClientSocket());
                 }
                 ReplicaLogEntry nextEntry = log.peek(); //retrieves but doesn't remove first element in the list
                 if(nextEntry != null && nextEntry.isIsCommited()) {
@@ -277,7 +277,7 @@ public class Replica implements TimeoutListener {
         return result;
     }
     
-    public boolean checkIsPrimary() {
+    public boolean isPrimary() {
         if(this.ipAddress.equals(this.primary.getIpAddress()) && this.port == this.primary.getPort()) {
             return true;
         } else {
@@ -285,8 +285,53 @@ public class Replica implements TimeoutListener {
         }
     }
     
+    public boolean isNextPrimary() {
+        //viewNumber start from 1, positions from 0
+        ReplicaInfo thisReplicaInfo = new ReplicaInfo(replicaID, ipAddress, port);
+        if(viewNumber == positionInReplicasTable(thisReplicaInfo)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    
+    public ReplicaInfo nextPrimary() {
+        int position = positionInReplicasTable(primary);
+        if(position == replicaTable.size()-1) {
+            position = -1;
+        }
+        ReplicaInfo nextPrimary = replicaTable.get(position+1);
+        return nextPrimary;
+    }
+    
+    private int positionInReplicasTable(ReplicaInfo replicaInfo) {
+        int position = -1;
+        for(int i = 0; i < replicaTable.size(); i++) {
+            if(replicaTable.get(i).getIpAddress().equals(replicaInfo.getIpAddress()) 
+                            && replicaTable.get(i).getPort() == replicaInfo.getPort()) {
+                position = i;
+                break;
+            }
+        }
+        if(position == -1) {
+            throw new RuntimeException("Replica " + replicaInfo.getReplicaID() + " " + ipAddress 
+                    + ":" + port + " does not appear in replicas table!");
+        }
+        return position;
+    }
+    
     @Override
     public void timeout() {
-        LogWriter.log(replicaID, "Timeout!");
+        LogWriter.log(replicaID, "Primary timeout!");
+        carryViewChange();
+    }
+    
+    public void carryViewChange() {
+        if(!isNextPrimary()) {
+            viewNumber++;
+            state = ReplicaState.ViewChange;
+            MessageDoViewChange doViewChange = new MessageDoViewChange(replicaID, viewNumber, log, lastCommited);
+            messageProcessor.sendMessageDoViewChange(doViewChange);
+        }
     }
 }

@@ -36,6 +36,10 @@ public class MessageProcessor {
                 MessagePrepareOK prepareOK = (MessagePrepareOK) message;
                 processPrepareOK2(prepareOK);
                 break;
+            case Constants.DOVIEWCHANGE : 
+                MessageDoViewChange doViewChange = (MessageDoViewChange) message;
+                LogWriter.log(replica.getReplicaID(), "Received DOVIEWCHANGE");
+                break;
         }
     }
     
@@ -163,6 +167,16 @@ public class MessageProcessor {
                 replica.getPrimary().getPort(), 
                 Constants.PREPAREOK, 
                 prepareOK)
+            ).start();
+    }
+    
+    public void sendMessageDoViewChange(MessageDoViewChange doViewChange) {
+        new Thread(new ReplicaClientRunnable(
+                replica,
+                replica.nextPrimary().getIpAddress(), 
+                replica.nextPrimary().getPort(), 
+                Constants.DOVIEWCHANGE, 
+                doViewChange)
             ).start();
     }
     

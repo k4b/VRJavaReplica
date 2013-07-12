@@ -66,6 +66,10 @@ public class ReplicaClientRunnable implements Runnable{
                 MessagePrepareOK prepareOK = (MessagePrepareOK) message;
                 sendPrepareOK(prepareOK);
                 break;
+            case Constants.DOVIEWCHANGE :
+                MessageDoViewChange doViewChange = (MessageDoViewChange) message;
+                sendDoViewChange(doViewChange);
+                break;
         }
     }
     
@@ -146,6 +150,92 @@ public class ReplicaClientRunnable implements Runnable{
             dataOutput.writeInt(operationNumberBytes.length);
             dataOutput.write(operationNumberBytes);
             byte[] replicaIDBytes = MyByteUtils.toByteArray(prepareOK.getReplicaID());
+            dataOutput.writeInt(replicaIDBytes.length);
+            dataOutput.write(replicaIDBytes);
+            
+        } catch (IOException ex) {
+            Logger.getLogger(ReplicaClientRunnable.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            try {
+                dataOutput.flush();
+                dataOutput.close();
+                clientSocket.close();
+            } catch (IOException ex) {
+                Logger.getLogger(ReplicaClientRunnable.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+    }
+    
+    private void sendDoViewChange(MessageDoViewChange doViewChange) {
+        LogWriter.log(replica.getReplicaID(), "Sending message DOVIEWCHANGE" + Constants.NEWLINE + doViewChange.toString());
+        DataOutputStream dataOutput = null;
+        try {
+            dataOutput = new DataOutputStream(clientSocket.getOutputStream());
+            byte[] messageIDBytes = MyByteUtils.toByteArray(doViewChange.getMessageID());
+            dataOutput.writeInt(messageIDBytes.length);
+            dataOutput.write(messageIDBytes);
+            byte[] viewNumberBytes = MyByteUtils.toByteArray(doViewChange.getViewNumber());
+            dataOutput.writeInt(viewNumberBytes.length);
+            dataOutput.write(viewNumberBytes);
+            //log
+            ReplicaLog log = doViewChange.getLog();
+            if(log != null && log.size() > 0) {
+                dataOutput.writeInt(log.size());
+                for(int i = 0; i < log.size(); i++) {
+                    //BEGINING OF REQUEST --------------------------------------------------------------------
+                    MessageRequest request = log.get(i).getRequest();
+                    byte[] requestMessageIDBytes = MyByteUtils.toByteArray(request.getMessageID());
+                    dataOutput.writeInt(requestMessageIDBytes.length);
+                    dataOutput.write(requestMessageIDBytes);
+                    byte[] operationIDBytes = MyByteUtils.toByteArray(request.getOperation().getOperationID());
+                    dataOutput.writeInt(operationIDBytes.length);
+                    dataOutput.write(operationIDBytes);
+                    byte[] operationPathBytes = MyByteUtils.toByteArray(request.getOperation().getPath());
+                    dataOutput.writeInt(operationPathBytes.length);
+                    dataOutput.write(operationPathBytes);
+                    if(request.getOperation().getOperationID() == 1) {
+                        byte[] operationFile = request.getOperation().getFile();
+                        if(operationFile != null) {
+                            dataOutput.writeInt(operationFile.length);
+                            dataOutput.write(operationFile);
+                        } else {
+                            dataOutput.writeInt(1);
+                            byte[] nullFile = new byte[1];
+                            nullFile[0] = 0;
+                            dataOutput.write(nullFile);
+                        }
+                    }
+                    byte[] clientIDBytes = MyByteUtils.toByteArray(request.getClientID());
+                    dataOutput.writeInt(clientIDBytes.length);
+                    dataOutput.write(clientIDBytes);
+                    byte[] requestNumberBytes = MyByteUtils.toByteArray(request.getRequestNumber());
+                    dataOutput.writeInt(requestNumberBytes.length);
+                    dataOutput.write(requestNumberBytes);
+                    byte[] requestViewNumberBytes = MyByteUtils.toByteArray(request.getViewNumber());
+                    dataOutput.writeInt(requestViewNumberBytes.length);
+                    dataOutput.write(requestViewNumberBytes);
+                    //END OF REQUEST --------------------------------------------------------------------
+                    //opNumber
+                    byte[] operationNumberBytes = MyByteUtils.toByteArray(log.get(i).getOperationNumber());
+                    dataOutput.writeInt(operationNumberBytes.length);
+                    dataOutput.write(operationNumberBytes);
+                    //isCommited
+                    byte[] isCommitedBytes = MyByteUtils.toByteArray(log.get(i).isIsCommited());
+                    dataOutput.writeInt(isCommitedBytes.length);
+                    dataOutput.write(isCommitedBytes);
+                }
+            } else {
+                dataOutput.writeInt(0);
+                dataOutput.writeInt(1);
+                byte[] nullFile = new byte[1];
+                nullFile[0] = 0;
+                dataOutput.write(nullFile);
+            }
+            
+            byte[] lastCommitedBytes = MyByteUtils.toByteArray(doViewChange.getLastCommited());
+            dataOutput.writeInt(lastCommitedBytes.length);
+            dataOutput.write(lastCommitedBytes);
+            byte[] replicaIDBytes = MyByteUtils.toByteArray(doViewChange.getReplicaID());
             dataOutput.writeInt(replicaIDBytes.length);
             dataOutput.write(replicaIDBytes);
             

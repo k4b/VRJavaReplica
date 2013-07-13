@@ -32,7 +32,7 @@ public class Replica implements TimeoutListener {
     private int lastCommited;
     private MessageProcessor messageProcessor;
     private TimeoutChecker timeoutChecker;
-    private int timeout = 10;
+    private int timeout = 15;
     
     public Replica() {
         replicaTable = new ReplicaTable();

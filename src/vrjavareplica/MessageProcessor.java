@@ -34,11 +34,11 @@ public class MessageProcessor {
                 break;
             case Constants.PREPAREOK : 
                 MessagePrepareOK prepareOK = (MessagePrepareOK) message;
-                processPrepareOK2(prepareOK);
+                processPrepareOK(prepareOK);
                 break;
             case Constants.DOVIEWCHANGE : 
                 MessageDoViewChange doViewChange = (MessageDoViewChange) message;
-                LogWriter.log(replica.getReplicaID(), "Received DOVIEWCHANGE");
+                processDoViewChange(doViewChange);
                 break;
         }
     }
@@ -77,7 +77,7 @@ public class MessageProcessor {
         processLastCommited(prepare.getLastCommited());
     }
     
-    private void processPrepareOK2(MessagePrepareOK prepareOK) {
+    private void processPrepareOK(MessagePrepareOK prepareOK) {
         LogWriter.log(replica.getReplicaID(), "Processing PREPAREOK...");
         ReplicaLogEntry entry = replica.getLog().findEntry(prepareOK.getOperationNumber());
         if(entry == null) {
@@ -110,8 +110,13 @@ public class MessageProcessor {
                 } else {
                     entry.setIsCommited(true);
                 }
+                replica.setLastCommited(lastCommited);
             }
         }
+    }
+    
+    private void processDoViewChange(MessageDoViewChange doViewChange) {
+        LogWriter.log(replica.getReplicaID(), "Processing DOVIEWCHANGE...");
     }
     
     public void sendMessage(MessageReply reply, Socket clientSocket) {

@@ -16,21 +16,23 @@ import java.util.logging.Logger;
  */
 public class ReplicaClientRunnable implements Runnable{
 
-    protected Replica replica;
-    protected String serverAddress;
-    protected int serverPort;
-    protected int messageID;
-    protected Object message;
-    protected boolean isStopped;
-    protected Thread runningThread= null;
-    protected Socket clientSocket;
+    private Replica replica;
+    private String serverAddress;
+    private int serverPort;
+    private int messageID;
+    private Object message;
+    private boolean isStopped;
+    private Thread runningThread= null;
+    private Socket clientSocket;
+    private int receiverReplicaID;
     
-    public ReplicaClientRunnable(Replica replica, String serverAddress, int serverPort, int messageID, Object message) {
+    public ReplicaClientRunnable(Replica replica, String serverAddress, int serverPort, int messageID, Object message, int receiverReplicaID) {
         this.replica = replica;
         this.serverAddress = serverAddress;
         this.serverPort = serverPort;
         this.messageID = messageID;
         this.message = message;
+        this.receiverReplicaID = receiverReplicaID;
     }
     
     @Override
@@ -60,22 +62,26 @@ public class ReplicaClientRunnable implements Runnable{
         switch(messageID) {
             case Constants.PREPARE :
                 MessagePrepare prepare = (MessagePrepare) message;
-                sendPrepare(prepare);
+                send(prepare);
                 break;
             case Constants.PREPAREOK :
                 MessagePrepareOK prepareOK = (MessagePrepareOK) message;
-                sendPrepareOK(prepareOK);
+                send(prepareOK);
                 break;
             case Constants.DOVIEWCHANGE :
                 MessageDoViewChange doViewChange = (MessageDoViewChange) message;
-                sendDoViewChange(doViewChange);
+                send(doViewChange);
+                break;
+            case Constants.STARTVIEW :
+                MessageStartView startView = (MessageStartView) message;
+                send(startView);
                 break;
         }
     }
     
-    private void sendPrepare(MessagePrepare prepare) {
+    private void send(MessagePrepare prepare) {
         
-        LogWriter.log(replica.getReplicaID(), "Sending message PREPARE" + Constants.NEWLINE + prepare.toString());
+        LogWriter.log(replica.getReplicaID(), "Sending message PREPARE to Replica " + receiverReplicaID + Constants.NEWLINE + prepare.toString());
         DataOutputStream dataOutput = null;
                 
         try {
@@ -135,8 +141,8 @@ public class ReplicaClientRunnable implements Runnable{
         }
     }
     
-    private void sendPrepareOK(MessagePrepareOK prepareOK) {
-        LogWriter.log(replica.getReplicaID(), "Sending message PREPAREOK" + Constants.NEWLINE + prepareOK.toString());
+    private void send(MessagePrepareOK prepareOK) {
+        LogWriter.log(replica.getReplicaID(), "Sending message PREPAREOK to Replica " + receiverReplicaID + Constants.NEWLINE + prepareOK.toString());
         DataOutputStream dataOutput = null;
         try {
             dataOutput = new DataOutputStream(clientSocket.getOutputStream());
@@ -166,8 +172,8 @@ public class ReplicaClientRunnable implements Runnable{
         }
     }
     
-    private void sendDoViewChange(MessageDoViewChange doViewChange) {
-        LogWriter.log(replica.getReplicaID(), "Sending message DOVIEWCHANGE" + Constants.NEWLINE + doViewChange.toString());
+    private void send(MessageDoViewChange doViewChange) {
+        LogWriter.log(replica.getReplicaID(), "Sending message DOVIEWCHANGE to Replica " + receiverReplicaID + Constants.NEWLINE + doViewChange.toString());
         DataOutputStream dataOutput = null;
         try {
             dataOutput = new DataOutputStream(clientSocket.getOutputStream());
@@ -239,6 +245,88 @@ public class ReplicaClientRunnable implements Runnable{
             dataOutput.writeInt(replicaIDBytes.length);
             dataOutput.write(replicaIDBytes);
             
+        } catch (IOException ex) {
+            Logger.getLogger(ReplicaClientRunnable.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            try {
+                dataOutput.flush();
+                dataOutput.close();
+                clientSocket.close();
+            } catch (IOException ex) {
+                Logger.getLogger(ReplicaClientRunnable.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+    }
+    
+    private void send(MessageStartView startView) {
+        LogWriter.log(replica.getReplicaID(), "Sending message STARTVIEW to Replica " + receiverReplicaID + Constants.NEWLINE + startView.toString());
+        DataOutputStream dataOutput = null;
+        try {
+            dataOutput = new DataOutputStream(clientSocket.getOutputStream());
+            byte[] messageIDBytes = MyByteUtils.toByteArray(startView.getMessageID());
+            dataOutput.writeInt(messageIDBytes.length);
+            dataOutput.write(messageIDBytes);
+            byte[] viewNumberBytes = MyByteUtils.toByteArray(startView.getViewNumber());
+            dataOutput.writeInt(viewNumberBytes.length);
+            dataOutput.write(viewNumberBytes);
+            //log
+            ReplicaLog log = startView.getLog();
+            if(log != null && log.size() > 0) {
+                dataOutput.writeInt(log.size());
+                for(int i = 0; i < log.size(); i++) {
+                    //BEGINING OF REQUEST --------------------------------------------------------------------
+                    MessageRequest request = log.get(i).getRequest();
+                    byte[] requestMessageIDBytes = MyByteUtils.toByteArray(request.getMessageID());
+                    dataOutput.writeInt(requestMessageIDBytes.length);
+                    dataOutput.write(requestMessageIDBytes);
+                    byte[] operationIDBytes = MyByteUtils.toByteArray(request.getOperation().getOperationID());
+                    dataOutput.writeInt(operationIDBytes.length);
+                    dataOutput.write(operationIDBytes);
+                    byte[] operationPathBytes = MyByteUtils.toByteArray(request.getOperation().getPath());
+                    dataOutput.writeInt(operationPathBytes.length);
+                    dataOutput.write(operationPathBytes);
+                    if(request.getOperation().getOperationID() == 1) {
+                        byte[] operationFile = request.getOperation().getFile();
+                        if(operationFile != null) {
+                            dataOutput.writeInt(operationFile.length);
+                            dataOutput.write(operationFile);
+                        } else {
+                            dataOutput.writeInt(1);
+                            byte[] nullFile = new byte[1];
+                            nullFile[0] = 0;
+                            dataOutput.write(nullFile);
+                        }
+                    }
+                    byte[] clientIDBytes = MyByteUtils.toByteArray(request.getClientID());
+                    dataOutput.writeInt(clientIDBytes.length);
+                    dataOutput.write(clientIDBytes);
+                    byte[] requestNumberBytes = MyByteUtils.toByteArray(request.getRequestNumber());
+                    dataOutput.writeInt(requestNumberBytes.length);
+                    dataOutput.write(requestNumberBytes);
+                    byte[] requestViewNumberBytes = MyByteUtils.toByteArray(request.getViewNumber());
+                    dataOutput.writeInt(requestViewNumberBytes.length);
+                    dataOutput.write(requestViewNumberBytes);
+                    //END OF REQUEST --------------------------------------------------------------------
+                    //opNumber
+                    byte[] operationNumberBytes = MyByteUtils.toByteArray(log.get(i).getOperationNumber());
+                    dataOutput.writeInt(operationNumberBytes.length);
+                    dataOutput.write(operationNumberBytes);
+                    //isCommited
+                    byte[] isCommitedBytes = MyByteUtils.toByteArray(log.get(i).isIsCommited());
+                    dataOutput.writeInt(isCommitedBytes.length);
+                    dataOutput.write(isCommitedBytes);
+                }
+            } else {
+                dataOutput.writeInt(0);
+                dataOutput.writeInt(1);
+                byte[] nullFile = new byte[1];
+                nullFile[0] = 0;
+                dataOutput.write(nullFile);
+            }
+            
+            byte[] lastCommitedBytes = MyByteUtils.toByteArray(startView.getLastCommited());
+            dataOutput.writeInt(lastCommitedBytes.length);
+            dataOutput.write(lastCommitedBytes);            
         } catch (IOException ex) {
             Logger.getLogger(ReplicaClientRunnable.class.getName()).log(Level.SEVERE, null, ex);
         } finally {

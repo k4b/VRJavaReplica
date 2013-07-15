@@ -35,6 +35,10 @@ public class TimeoutTimer {
         future = executor.submit(new TimeoutTask(timeout));
     }
     
+    public void stop() {
+        executor.shutdownNow();
+    }        
+    
     public boolean isTimeOut() {
         boolean result = false;
         try {

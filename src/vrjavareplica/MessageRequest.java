@@ -10,8 +10,6 @@ package vrjavareplica;
  */
 public class MessageRequest extends Message {
     
-    private static final String NEWLINE = System.getProperty("line.separator");
-    
     private int clientID;
     private int requestNumber;
     private int viewNumber;
@@ -28,13 +26,13 @@ public class MessageRequest extends Message {
     @Override
     public String toString() {
         String s = "";
-        s += "Message REQUEST" + NEWLINE;
-        s += "ID: " + getMessageID() + NEWLINE;
+        s += "Message REQUEST" + Constants.NEWLINE;
+        s += "ID: " + getMessageID() + Constants.NEWLINE;
         if(operation != null) {
-            s += "Operation: " + operation.getOperationID() + NEWLINE;
+            s += "Operation: " + operation.getOperationID() + Constants.NEWLINE;
         }
-        s += "Request number: " + requestNumber + NEWLINE;
-        s += "View number: " + viewNumber + NEWLINE;
+        s += "Request number: " + requestNumber + Constants.NEWLINE;
+        s += "View number: " + viewNumber + Constants.NEWLINE;
         return s;
     }
 

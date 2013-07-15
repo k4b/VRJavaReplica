@@ -19,6 +19,7 @@ public class ReplicaLogEntry {
      */
     private int commitsNumber;
     private boolean isCommited;
+    private boolean isExecuted;
     private Socket clientSocket;
     
     public ReplicaLogEntry(MessageRequest request, int operationNumber) {
@@ -66,6 +67,14 @@ public class ReplicaLogEntry {
 
     public void setClientSocket(Socket clientSocket) {
         this.clientSocket = clientSocket;
+    }
+
+    public boolean isIsExecuted() {
+        return isExecuted;
+    }
+
+    public void setIsExecuted(boolean isExecuted) {
+        this.isExecuted = isExecuted;
     }
     
     

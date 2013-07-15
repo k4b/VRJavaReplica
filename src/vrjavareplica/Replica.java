@@ -13,11 +13,7 @@ import java.util.NoSuchElementException;
  */
 public class Replica implements TimeoutListener {
 
-    public enum ReplicaState { Normal, ViewChange, Recovering };
-    private static final String PARAMETER_FILE_NAME = "Parameters.txt";
-    private static final String HOSTS_FILE_NAME = "Hosts.txt";
-    private static final String NEWLINE = System.getProperty("line.separator");
-    
+    public enum ReplicaState { Normal, ViewChange, Recovering };  
     
     private int replicaID;
     private String ipAddress;
@@ -31,8 +27,11 @@ public class Replica implements TimeoutListener {
     private ReplicaLog log;
     private int lastCommited;
     private MessageProcessor messageProcessor;
-    private TimeoutChecker timeoutChecker;
-    private int timeout = 15;
+    private TimeoutChecker timeoutChecker;;
+    private ReplicaLog executedRequests;
+    private int numDoViewChangeReceived;
+    private MessageDoViewChange mostRecentDoViewChange = null;
+    private int timeout = 5;
     
     public Replica() {
         replicaTable = new ReplicaTable();
@@ -42,12 +41,17 @@ public class Replica implements TimeoutListener {
         primary = replicaTable.get(0);
         viewNumber = 1;
         opNumber = 0;
+        state = ReplicaState.Normal;
         log = new ReplicaLog();
         lastCommited = 0;
-        System.out.println(identify());
+        numDoViewChangeReceived = 0;
+        executedRequests = new ReplicaLog();
+        LogWriter.log(replicaID, identify());
+        LogWriter.log(replicaID, getStatus());
         
-        
-        startTimoutChecker();
+        if(!isPrimary()) {
+            startTimoutChecker();
+        }
         messageProcessor = new MessageProcessor(this);
         VRCode vrCode = new VRCode(replicaID, port, messageProcessor);
         new Thread(vrCode).start();
@@ -63,35 +67,50 @@ public class Replica implements TimeoutListener {
         primary = replicaTable.get(0);
         viewNumber = 1;
         opNumber = 0;
+        state = ReplicaState.Normal;
         log = new ReplicaLog();
         lastCommited = 0;
-        System.out.println(identify());
+        executedRequests = new ReplicaLog();
+        numDoViewChangeReceived = 0;
+        LogWriter.log(replicaID, identify());
+        LogWriter.log(replicaID, getStatus());
         
-        startTimoutChecker();
+        if(!isPrimary()) {
+            startTimoutChecker();
+        }
         messageProcessor = new MessageProcessor(this);
         VRCode vrCode = new VRCode(replicaID, port, messageProcessor);
         new Thread(vrCode).start();
     }
     
-    private void startTimoutChecker() {
-        if(!isPrimary()) {
+    public void startTimoutChecker() {
             timeoutChecker = new TimeoutChecker(timeout);
             timeoutChecker.addTimeoutListener(this);
             timeoutChecker.start();
-        }
+    }
+    
+    private void stopTimeoutChecker() {
+        timeoutChecker.terminate();
     }
     
     public String identify() {
-        String s = "";
-        s += "Replica App" + NEWLINE;
-        s += "ID: " + replicaID + NEWLINE;
-        s += "ipAddress: " + ipAddress + NEWLINE;
-        s += "port: " + port + NEWLINE;
-        s += "Hosts: " + NEWLINE;
+        String s = "Identification:" + Constants.NEWLINE;
+        s += "ipAddress: " + ipAddress + Constants.NEWLINE;
+        s += "port: " + port + Constants.NEWLINE;
+        s += "Hosts: " + Constants.NEWLINE;
         for(ReplicaInfo rep : replicaTable) {
-            s += "Replica[" + rep.getReplicaID() + "] " + rep.getIpAddress() + ":" + rep.getPort() + NEWLINE;
+            s += "Replica[" + rep.getReplicaID() + "] " + rep.getIpAddress() + ":" + rep.getPort() + Constants.NEWLINE;
         }
         return s;
+    }
+    
+    public String getStatus() {
+        String status = "Status:" + Constants.NEWLINE;
+        status += "View number " + viewNumber + Constants.NEWLINE;
+        status += "Operation number: " + opNumber + Constants.NEWLINE;
+        status += "State: " + state.toString() + Constants.NEWLINE;
+        status += "Is primary: " + isPrimary() + Constants.NEWLINE;
+        return status;
     }
     
     public void incrementOpNumber() {
@@ -99,7 +118,7 @@ public class Replica implements TimeoutListener {
     }
             
     private boolean loadParameters() {
-        ArrayList<ArrayList<String>> tokenizedLines = MyFileUtils.loadFile(PARAMETER_FILE_NAME);
+        ArrayList<ArrayList<String>> tokenizedLines = MyFileUtils.loadFile(Constants.PARAMETER_FILE_NAME);
         if(tokenizedLines.size() >= 3) {
             int repID = Integer.valueOf(tokenizedLines.get(0).get(0));
             String address = tokenizedLines.get(1).get(0);
@@ -118,7 +137,7 @@ public class Replica implements TimeoutListener {
     }
     
     private boolean loadHosts() {
-        ArrayList<ArrayList<String>> tokenizedLines = MyFileUtils.loadFile(HOSTS_FILE_NAME);
+        ArrayList<ArrayList<String>> tokenizedLines = MyFileUtils.loadFile(Constants.HOSTS_FILE_NAME);
         if(tokenizedLines.size() > 0) {
             for(int i = 0; i < tokenizedLines.size(); i++) {
                 ArrayList<String> tokens = tokenizedLines.get(i);
@@ -229,6 +248,30 @@ public class Replica implements TimeoutListener {
     public TimeoutChecker getTimeoutChecker() {
         return timeoutChecker;
     }
+
+    public int getNumDoViewChangeReceived() {
+        return numDoViewChangeReceived;
+    }
+    
+    public void increaseNumDoViewChangeReceived() {
+        numDoViewChangeReceived++;
+    }
+
+    public MessageDoViewChange getMostRecentDoViewChange() {
+        return mostRecentDoViewChange;
+    }
+
+    public void setMostRecentDoViewChange(MessageDoViewChange mostRecentDoViewChange) {
+        this.mostRecentDoViewChange = mostRecentDoViewChange;
+    }
+
+    public int getTimeout() {
+        return timeout;
+    }
+    
+    
+    
+    
     
     public synchronized boolean executeRequest(ReplicaLogEntry entry) {
         int operation = entry.getRequest().getOperation().getOperationID();
@@ -243,6 +286,7 @@ public class Replica implements TimeoutListener {
         }
         
         if(result) {
+            executedRequests.addLast(entry);
             try {
                 ReplicaLogEntry firstEntry = log.peek(); //retrieves but doesn't remove first element in the list
                 if(entry.equals(firstEntry)) {
@@ -322,8 +366,10 @@ public class Replica implements TimeoutListener {
     
     @Override
     public void timeout() {
-        LogWriter.log(replicaID, "Primary timeout!");
-        carryViewChange();
+        if(!isPrimary()) {
+            LogWriter.log(replicaID, "Primary timeout!");
+            carryViewChange();
+        }
     }
     
     public void carryViewChange() {
@@ -331,7 +377,26 @@ public class Replica implements TimeoutListener {
             viewNumber++;
             state = ReplicaState.ViewChange;
             MessageDoViewChange doViewChange = new MessageDoViewChange(replicaID, viewNumber, log, lastCommited);
-            messageProcessor.sendMessageDoViewChange(doViewChange);
+            messageProcessor.sendMessage(doViewChange);
         }
+    }
+    
+    public void switchToPrimary() {
+        stopTimeoutChecker();
+        if(mostRecentDoViewChange.getLog().size() == 0) {
+            opNumber = 0;
+        } else {
+            opNumber = mostRecentDoViewChange.getLog().getLast().getOperationNumber();
+        }
+        viewNumber = mostRecentDoViewChange.getViewNumber();
+        state = ReplicaState.Normal;
+        primary = new ReplicaInfo(this.replicaID, this.ipAddress, this.port);
+        numDoViewChangeReceived = 0;
+        LogWriter.log(replicaID, "Switched to PRIMARY");
+        LogWriter.log(replicaID, getStatus());
+        MessageStartView startView = new MessageStartView(viewNumber, mostRecentDoViewChange.getLog(), opNumber);
+        messageProcessor.sendMessage(startView);
+        //execute pending operations
+        //send replies to clients.
     }
 }

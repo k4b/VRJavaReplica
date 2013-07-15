@@ -14,12 +14,12 @@ import java.net.Socket;
  */
 public class VRCode implements Runnable{
     
-    protected int replicaID;
-    protected int port;
-    protected MessageProcessor messageProcessor;
-    protected ServerSocket serverSocket = null;
-    protected boolean      isStopped    = false;
-    protected Thread       runningThread= null;
+    private int replicaID;
+    private int port;
+    private MessageProcessor messageProcessor;
+    private ServerSocket serverSocket = null;
+    private boolean isStopped = false;
+    private Thread runningThread = null;
     
     public VRCode(int replicaID, int port, MessageProcessor messageProcessor) {
         this.replicaID = replicaID;

@@ -30,6 +30,7 @@ public class TimeoutChecker extends Thread{
     
     public void terminate() {
         isRunning = false;
+        timer.stop();
     }
     
     void addTimeoutListener(TimeoutListener l) {
@@ -49,6 +50,7 @@ public class TimeoutChecker extends Thread{
     
     public void restart() {
         timer.restart();
+        isRunning = true;
     }
 
     @Override

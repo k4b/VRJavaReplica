@@ -17,34 +17,40 @@ import java.util.logging.Logger;
 public class MessageProcessor {
     
     Replica replica;
+    int replicaID;
     
     public MessageProcessor(Replica replica) {
         this.replica = replica;
+        this.replicaID = replica.getReplicaID();
     }
     
     public synchronized void processMessage(int messageID, Object message, Socket clientSocket) {
         switch(messageID) {
             case Constants.REQUEST : 
                 MessageRequest request = (MessageRequest) message;
-                processRequest(request, clientSocket);
+                processMessage(request, clientSocket);
                 break;
             case Constants.PREPARE : 
                 MessagePrepare prepare = (MessagePrepare) message;
-                processPrepare(prepare);
+                processMessage(prepare);
                 break;
             case Constants.PREPAREOK : 
                 MessagePrepareOK prepareOK = (MessagePrepareOK) message;
-                processPrepareOK(prepareOK);
+                processMessage(prepareOK);
                 break;
             case Constants.DOVIEWCHANGE : 
                 MessageDoViewChange doViewChange = (MessageDoViewChange) message;
-                processDoViewChange(doViewChange);
+                processMessage(doViewChange);
+                break;
+            case Constants.STARTVIEW : 
+                MessageStartView startView = (MessageStartView) message;
+                processMessage(startView);
                 break;
         }
     }
     
-    private void processRequest(MessageRequest request, Socket clientSocket) {
-        LogWriter.log(replica.getReplicaID(), "Processing REQUEST...");
+    private void processMessage(MessageRequest request, Socket clientSocket) {
+        LogWriter.log(replicaID, "Processing REQUEST...");
         
         replica.incrementOpNumber();
         
@@ -58,35 +64,35 @@ public class MessageProcessor {
         sendMessage(prepare);        
     }
     
-    private void processPrepare(MessagePrepare prepare) {
+    private void processMessage(MessagePrepare prepare) {
 //        try {
 //            Thread.sleep(1000*(long)Math.random()*15);
 //        } catch (InterruptedException ex) {
 //            Logger.getLogger(MessageProcessor.class.getName()).log(Level.SEVERE, null, ex);
 //        }
-        LogWriter.log(replica.getReplicaID(), "Processing PREPARE...");
+        LogWriter.log(replicaID, "Processing PREPARE...");
         restartTimeoutChecker();
         
         replica.getLog().addLast(new ReplicaLogEntry(prepare.getRequest(), prepare.getOperationNumber()));
         MessagePrepareOK prepareOK = new MessagePrepareOK(
                 replica.getViewNumber(), 
                 prepare.getOperationNumber(), 
-                replica.getReplicaID());
-        sendMessagePrepareOK(prepareOK);
+                replicaID);
+        sendMessage(prepareOK);
         
         processLastCommited(prepare.getLastCommited());
     }
     
-    private void processPrepareOK(MessagePrepareOK prepareOK) {
-        LogWriter.log(replica.getReplicaID(), "Processing PREPAREOK...");
+    private void processMessage(MessagePrepareOK prepareOK) {
+        LogWriter.log(replicaID, "Processing PREPAREOK...");
         ReplicaLogEntry entry = replica.getLog().findEntry(prepareOK.getOperationNumber());
         if(entry == null) {
             //this is late prepareOK, not needed
-            LogWriter.log(replica.getReplicaID(), "PREPAREOK - no such entry!");
+            LogWriter.log(replicaID, "PREPAREOK - no such entry!");
             return;
         } else {
             entry.increaseCommitsNumber();
-            LogWriter.log(replica.getReplicaID(), 
+            LogWriter.log(replicaID, 
                     "Operation " + entry.getOperationNumber() + " commits " 
                     + entry.getCommitsNumber() + "/" + (replica.getReplicaTable().size() - 1));
             if(isCommitsSufficient(entry)) {
@@ -115,14 +121,43 @@ public class MessageProcessor {
         }
     }
     
-    private void processDoViewChange(MessageDoViewChange doViewChange) {
-        LogWriter.log(replica.getReplicaID(), "Processing DOVIEWCHANGE...");
+    private void processMessage(MessageDoViewChange doViewChange) {
+        LogWriter.log(replicaID, "Processing DOVIEWCHANGE...");
+        replica.increaseNumDoViewChangeReceived();
+        if(replica.getMostRecentDoViewChange() == null) {
+            replica.setMostRecentDoViewChange(doViewChange);
+        } else if(doViewChange.isLogMoreRecent(replica.getMostRecentDoViewChange())) {
+            replica.setMostRecentDoViewChange(doViewChange);
+        }
+        if(isNumDoViewChangeReceivedSufficient()) {
+            replica.switchToPrimary();
+        }
+    }
+    
+    private void processMessage(MessageStartView startView) {
+        LogWriter.log(replicaID, "Processing STARTVIEW...");
+        replica.setLog(startView.getLog());
+        if(startView.getLog().size() > 0) {
+            replica.setOpNumber(startView.getLog().peekLast().getOperationNumber());
+        }
+        replica.setViewNumber(startView.getViewNumber());
+        replica.setState(Replica.ReplicaState.Normal);
+        LogWriter.log(replicaID, "View changed");
+        LogWriter.log(replicaID, replica.getStatus());
+        replica.startTimoutChecker();
+        // send prepareOK to all
+        
+        try {
+            Thread.sleep(60*1000);
+        } catch (InterruptedException ex) {
+            Logger.getLogger(MessageProcessor.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
     
     public void sendMessage(MessageReply reply, Socket clientSocket) {
         DataOutputStream dataOutput = null;
         try {
-            LogWriter.log(replica.getReplicaID(), "Sending message:" + Constants.NEWLINE + reply.toString());
+            LogWriter.log(replicaID, "Sending message:" + Constants.NEWLINE + reply.toString());
             
             dataOutput = new DataOutputStream(clientSocket.getOutputStream());
             byte[] messageIDBytes = MyByteUtils.toByteArray(reply.getMessageID());
@@ -153,36 +188,54 @@ public class MessageProcessor {
     
     private void sendMessage(MessagePrepare prepare) {
         for(int i = 0; i < replica.getReplicaTable().size(); i++) {
-            if(i+1 != replica.getReplicaID()) { //not sending to primary
+            if(i+1 != replicaID) { //not sending to primary
                 new Thread(new ReplicaClientRunnable(
                         replica,
                         replica.getReplicaTable().get(i).getIpAddress(), 
                         replica.getReplicaTable().get(i).getPort(), 
                         Constants.PREPARE, 
-                        prepare)
+                        prepare,
+                        i+1)
                     ).start();
             }
         }
     }
     
-    private void sendMessagePrepareOK(MessagePrepareOK prepareOK) {
+    private void sendMessage(MessagePrepareOK prepareOK) {
         new Thread(new ReplicaClientRunnable(
                 replica,
                 replica.getPrimary().getIpAddress(), 
                 replica.getPrimary().getPort(), 
                 Constants.PREPAREOK, 
-                prepareOK)
+                prepareOK,
+                replica.getPrimary().getReplicaID())
             ).start();
     }
     
-    public void sendMessageDoViewChange(MessageDoViewChange doViewChange) {
+    public void sendMessage(MessageDoViewChange doViewChange) {
         new Thread(new ReplicaClientRunnable(
                 replica,
                 replica.nextPrimary().getIpAddress(), 
                 replica.nextPrimary().getPort(), 
                 Constants.DOVIEWCHANGE, 
-                doViewChange)
+                doViewChange,
+                replica.nextPrimary().getReplicaID())
             ).start();
+    }
+    
+    public void sendMessage(MessageStartView startView) {
+        for(int i = 0; i < replica.getReplicaTable().size(); i++) {
+            if(i+1 != replicaID) { //not sending to primary
+                new Thread(new ReplicaClientRunnable(
+                        replica,
+                        replica.getReplicaTable().get(i).getIpAddress(), 
+                        replica.getReplicaTable().get(i).getPort(), 
+                        Constants.STARTVIEW, 
+                        startView,
+                        i+1)
+                    ).start();
+            }
+        }
     }
     
     private boolean isCommitsSufficient( ReplicaLogEntry entry ) {
@@ -209,5 +262,10 @@ public class MessageProcessor {
     
     private void restartTimeoutChecker() {
         replica.getTimeoutChecker().restart();
+    }
+    
+    private boolean isNumDoViewChangeReceivedSufficient() {
+        boolean result = (replica.getNumDoViewChangeReceived() + 1) > (replica.getReplicaTable().size()/2);
+        return result;
     }
 }

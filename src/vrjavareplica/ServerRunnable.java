@@ -61,6 +61,9 @@ public class ServerRunnable implements Runnable{
             case Constants.DOVIEWCHANGE :
                 object = receiveDoViewChange();
                 break;
+            case Constants.STARTVIEW :
+                object = receiveStartView();
+                break;
         }
         return object;
     }
@@ -348,6 +351,110 @@ public class ServerRunnable implements Runnable{
             Logger.getLogger(ServerRunnable.class.getName()).log(Level.SEVERE, null, ex);
         } finally {
             return doViewChange;
+        }
+    }
+    
+    private MessageStartView receiveStartView() {
+        DataInputStream dataInput;
+        MessageStartView startView = null;
+        try {
+            dataInput = new DataInputStream(clientSocket.getInputStream());
+            int size = dataInput.readInt();
+            byte[] viewNumberBytes = new byte[size];
+            dataInput.read(viewNumberBytes, 0, size);
+            //log size
+            int logSize = dataInput.readInt();
+            ReplicaLog log = new ReplicaLog();
+            if(logSize > 0) {
+                MessageRequest request;
+                for(int i = 0; i < logSize; i++) {
+                    //BEGINING OF REQUEST -----------------------------------------------------------------
+                    size = dataInput.readInt();
+                    byte[] requestMessageIDBytes = new byte[size];
+                    dataInput.read(requestMessageIDBytes, 0, size);
+                    size = dataInput.readInt();
+                    byte[] operationIDBytes = new byte[size];
+                    dataInput.read(operationIDBytes, 0, size);
+                    size = dataInput.readInt();
+                    byte[] operationPathBytes = new byte[size];
+                    dataInput.read(operationPathBytes, 0, size);
+                    byte[] operationFile = null;
+                    if(MyByteUtils.byteArrayToInt(operationIDBytes) == 1) {
+                        size = dataInput.readInt();
+                        if(size != 1) {
+                            operationFile = new byte[size];
+                            if(operationFile != null) {
+                                dataInput.read(operationFile, 0, size);
+                            }
+                        } else {
+                            dataInput.read();
+                        }
+                    }
+                    size = dataInput.readInt();
+                    byte[] clientIDBytes = new byte[size];
+                    dataInput.read(clientIDBytes, 0, size);
+                    size = dataInput.readInt();
+                    byte[] requestNumberBytes = new byte[size];
+                    dataInput.read(requestNumberBytes, 0, size);
+                    size = dataInput.readInt();
+                    byte[] requestViewNumberBytes = new byte[size];
+                    dataInput.read(requestViewNumberBytes, 0, size);
+                    //END OF REQUEST -----------------------------------------------------------------
+                    size = dataInput.readInt();
+                    byte[] opNumberBytes = new byte[size];
+                    dataInput.read(opNumberBytes, 0, size);
+                    size = dataInput.readInt();
+                    byte[] isCommitedBytes = new byte[size];
+                    dataInput.read(isCommitedBytes, 0, size);
+                    
+                    
+                    Operation operation = null;
+                    int operationID = MyByteUtils.byteArrayToInt(operationIDBytes);
+                    String path = new String(operationPathBytes, "UTF-8");
+                    if(path.contains("\n")) {
+                        path = path.replaceAll("\n", ".");
+                    }
+                    switch(operationID) {
+                        case 1 :
+                            operation = new Operation(
+                                    path,
+                                    operationFile);
+                            break;
+                        case 2 :
+                            operation = new Operation( new String(operationPathBytes));
+                            break;
+                    }
+
+                    request = new MessageRequest(
+                            operation,
+                            MyByteUtils.byteArrayToInt(clientIDBytes),
+                            MyByteUtils.byteArrayToInt(requestNumberBytes),
+                            MyByteUtils.byteArrayToInt(requestViewNumberBytes));
+                    ReplicaLogEntry entry = new ReplicaLogEntry(request, MyByteUtils.byteArrayToInt(opNumberBytes));
+                    log.add(entry);
+                }
+            } else {
+                size = dataInput.readInt();
+                byte[] nullLogBytes = new byte[size];
+                dataInput.read(nullLogBytes, 0, size);
+            }
+            size = dataInput.readInt();
+            byte[] lastCommitedBytes = new byte[size];
+            dataInput.read(lastCommitedBytes, 0, size);
+            
+            startView = new MessageStartView(
+                    MyByteUtils.byteArrayToInt(viewNumberBytes),
+                    log, 
+                    MyByteUtils.byteArrayToInt(lastCommitedBytes));
+            
+            LogWriter.log(replicaID, "Received STARTVIEW:" + Constants.NEWLINE + startView.toString());
+            
+        } catch (IOException ex) {
+            Logger.getLogger(ServerRunnable.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (Exception ex) {
+            Logger.getLogger(ServerRunnable.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            return startView;
         }
     }
 }

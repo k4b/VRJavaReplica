@@ -4,6 +4,7 @@
  */
 package vrjavareplica;
 
+import java.util.Collection;
 import java.util.LinkedList;
 
 /**
@@ -11,6 +12,14 @@ import java.util.LinkedList;
  * @author karol
  */
 public class ReplicaLog extends LinkedList<ReplicaLogEntry>{
+    
+    public ReplicaLog() {
+        super();
+    }
+    
+    public ReplicaLog(Collection<ReplicaLogEntry> c) {
+        super(c);
+    }
     
     public int findRequestNumber(int operationNumber) {
         int value = 0;

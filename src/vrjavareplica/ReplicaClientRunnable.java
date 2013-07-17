@@ -37,7 +37,7 @@ public class ReplicaClientRunnable implements Runnable{
     
     @Override
     public void run() {
-        LogWriter.log( replica.getReplicaID(), "Client started");
+//        LogWriter.log( replica.getReplicaID(), "Client started");
         synchronized(this){
             this.runningThread = Thread.currentThread();
         }
@@ -51,7 +51,7 @@ public class ReplicaClientRunnable implements Runnable{
             }
             throw new RuntimeException("Error accepting server connection", e);
         }
-        LogWriter.log( replica.getReplicaID(), "Client communication Stopped.") ;
+//        LogWriter.log( replica.getReplicaID(), "Client communication Stopped.") ;
     }
     
     private synchronized boolean isStopped() {            

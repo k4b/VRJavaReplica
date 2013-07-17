@@ -4,7 +4,11 @@
  */
 package vrjavareplica;
 
+import com.sun.org.apache.bcel.internal.generic.ARRAYLENGTH;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 /**
@@ -31,7 +35,8 @@ public class Replica implements TimeoutListener {
     private ReplicaLog executedRequests;
     private int numDoViewChangeReceived;
     private MessageDoViewChange mostRecentDoViewChange = null;
-    private int timeout = 5;
+    private ArrayList<ReplicaLog> replicasLogs = new ArrayList<>();
+    private int timeout = 20;
     
     public Replica() {
         replicaTable = new ReplicaTable();
@@ -268,6 +273,10 @@ public class Replica implements TimeoutListener {
     public int getTimeout() {
         return timeout;
     }
+
+    public ArrayList<ReplicaLog> getReplicasLogs() {
+        return replicasLogs;
+    }
     
     
     
@@ -292,7 +301,7 @@ public class Replica implements TimeoutListener {
                 if(entry.equals(firstEntry)) {
                     log.removeFirst();
                 }
-                if(isPrimary()) {
+                if(entry.getClientSocket() != null && isPrimary()) {
                     MessageReply reply = new MessageReply(this.getViewNumber(), entry.getRequest().getRequestNumber(), result);
                     messageProcessor.sendMessage(reply, entry.getClientSocket());
                 }
@@ -397,6 +406,59 @@ public class Replica implements TimeoutListener {
         MessageStartView startView = new MessageStartView(viewNumber, mostRecentDoViewChange.getLog(), opNumber);
         messageProcessor.sendMessage(startView);
         //execute pending operations
-        //send replies to clients.
+        ArrayList<ReplicaLogEntry> entries = computeOperationsToExecute(replicasLogs, replicaTable.size()/2);
+        for(ReplicaLogEntry entry : entries) {
+            executeRequest(entry);
+            //send replies to clients.
+        }
     }
+    
+    private ArrayList<ReplicaLogEntry> computeOperationsToExecute(ArrayList<ReplicaLog> logList, int treshold) {
+        ArrayList<Viewstamp> toExecute = new ArrayList<>();
+        ViewstampMap map = new ViewstampMap();
+        HashMap<Viewstamp, ReplicaLogEntry> logEntryMap = new HashMap<>();
+        ArrayList<ReplicaLogEntry> entries = new ArrayList<>();
+        
+        for(int i = 0; i < logList.size(); i++) {
+            for(int j = 0 ; j < logList.get(i).size(); j++) {
+                ReplicaLogEntry entry = logList.get(i).get(j);
+                int viewNumber = entry.getRequest().getViewNumber();
+                int operationNumber = entry.getOperationNumber();
+                Viewstamp viewstamp = new Viewstamp(viewNumber, operationNumber);
+                map.add(viewstamp);
+                logEntryMap.put(viewstamp, entry);
+                
+            }
+        }
+        Iterator it = map.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry pairs = (Map.Entry)it.next();
+            if((int)pairs.getValue() >= treshold) {
+                toExecute.add((Viewstamp)pairs.getKey());
+            }
+            it.remove(); // avoids a ConcurrentModificationException
+        }
+        sortViewstamps(toExecute);
+        for(int k = 0; k < toExecute.size(); k++) {
+            entries.add(logEntryMap.get(toExecute.get(k)));
+        }
+        
+        return entries;
+    }
+    
+    private void sortViewstamps(ArrayList<Viewstamp> list) {
+        //Bubble sort
+        Viewstamp temp = null;
+        for(int i = 0; i < list.size(); i++) {
+            for(int j = 1; j < list.size()-i; j++) {
+                if(list.get(j-1).isGreater(list.get(j))) {
+                    temp =  list.get(j-1);
+                    list.set(j-1, list.get(j));
+                    list.set(j, temp);
+                }
+            }
+        }
+    }
+    
+    
 }

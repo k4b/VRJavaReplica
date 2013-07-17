@@ -28,7 +28,7 @@ public class ServerRunnable implements Runnable{
 
     public void run() {
         try {            
-            LogWriter.log(replicaID, "Receiving message...");
+//            LogWriter.log(replicaID, "Receiving message...");
             DataInputStream dataInput = new DataInputStream(clientSocket.getInputStream());
             int size = dataInput.readInt();
             byte[] requestIDBytes = new byte[size];

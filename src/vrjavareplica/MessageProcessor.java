@@ -124,6 +124,7 @@ public class MessageProcessor {
     private void processMessage(MessageDoViewChange doViewChange) {
         LogWriter.log(replicaID, "Processing DOVIEWCHANGE...");
         replica.increaseNumDoViewChangeReceived();
+        replica.getReplicasLogs().add(doViewChange.getLog());
         if(replica.getMostRecentDoViewChange() == null) {
             replica.setMostRecentDoViewChange(doViewChange);
         } else if(doViewChange.isLogMoreRecent(replica.getMostRecentDoViewChange())) {
@@ -142,6 +143,11 @@ public class MessageProcessor {
         }
         replica.setViewNumber(startView.getViewNumber());
         replica.setState(Replica.ReplicaState.Normal);
+        int nextPrimaryTableRow = (startView.getViewNumber() - 1) % replica.getReplicaTable().size();
+        replica.setPrimary(new ReplicaInfo(
+                replica.getReplicaTable().get(nextPrimaryTableRow).getReplicaID(),
+                replica.getReplicaTable().get(nextPrimaryTableRow).getIpAddress(),
+                replica.getReplicaTable().get(nextPrimaryTableRow).getPort()));
         LogWriter.log(replicaID, "View changed");
         LogWriter.log(replicaID, replica.getStatus());
         replica.startTimoutChecker();

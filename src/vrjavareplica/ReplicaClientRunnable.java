@@ -24,15 +24,17 @@ public class ReplicaClientRunnable implements Runnable{
     private boolean isStopped;
     private Thread runningThread= null;
     private Socket clientSocket;
-    private int receiverReplicaID;
+    private int receiverID;
+    private int receiverFlag;
     
-    public ReplicaClientRunnable(Replica replica, String serverAddress, int serverPort, int messageID, Object message, int receiverReplicaID) {
+    public ReplicaClientRunnable(Replica replica, String serverAddress, int serverPort,
+            int messageID, Object message, int receiverID) {
         this.replica = replica;
         this.serverAddress = serverAddress;
         this.serverPort = serverPort;
         this.messageID = messageID;
         this.message = message;
-        this.receiverReplicaID = receiverReplicaID;
+        this.receiverID = receiverID;
     }
     
     @Override
@@ -68,6 +70,10 @@ public class ReplicaClientRunnable implements Runnable{
                 MessagePrepareOK prepareOK = (MessagePrepareOK) message;
                 send(prepareOK);
                 break;
+            case Constants.REPLY :
+                MessageReply reply = (MessageReply) message;
+                send(reply);
+                break;
             case Constants.DOVIEWCHANGE :
                 MessageDoViewChange doViewChange = (MessageDoViewChange) message;
                 send(doViewChange);
@@ -81,7 +87,7 @@ public class ReplicaClientRunnable implements Runnable{
     
     private void send(MessagePrepare prepare) {
         
-        LogWriter.log(replica.getReplicaID(), "Sending message PREPARE to Replica " + receiverReplicaID + Constants.NEWLINE + prepare.toString());
+        LogWriter.log(replica.getReplicaID(), "Sending message PREPARE to Replica " + receiverID + Constants.NEWLINE + prepare.toString());
         DataOutputStream dataOutput = null;
                 
         try {
@@ -142,7 +148,7 @@ public class ReplicaClientRunnable implements Runnable{
     }
     
     private void send(MessagePrepareOK prepareOK) {
-        LogWriter.log(replica.getReplicaID(), "Sending message PREPAREOK to Replica " + receiverReplicaID + Constants.NEWLINE + prepareOK.toString());
+        LogWriter.log(replica.getReplicaID(), "Sending message PREPAREOK to Replica " + receiverID + Constants.NEWLINE + prepareOK.toString());
         DataOutputStream dataOutput = null;
         try {
             dataOutput = new DataOutputStream(clientSocket.getOutputStream());
@@ -172,8 +178,41 @@ public class ReplicaClientRunnable implements Runnable{
         }
     }
     
+    private void send(MessageReply reply) {
+        LogWriter.log(replica.getReplicaID(), "Sending message REPLY to Client " + receiverID + Constants.NEWLINE + reply.toString());
+        DataOutputStream dataOutput = null;
+        try {
+            dataOutput = new DataOutputStream(clientSocket.getOutputStream());
+            byte[] messageIDBytes = MyByteUtils.toByteArray(reply.getMessageID());
+            dataOutput.writeInt(messageIDBytes.length);
+            dataOutput.write(messageIDBytes);
+            byte[] viewNumberBytes = MyByteUtils.toByteArray(reply.getViewNumber());
+            dataOutput.writeInt(viewNumberBytes.length);
+            dataOutput.write(viewNumberBytes);
+            byte[] requestNumberBytes = MyByteUtils.toByteArray(reply.getRequestNumber());
+            dataOutput.writeInt(requestNumberBytes.length);
+            dataOutput.write(requestNumberBytes);
+            byte[] resultBytes = MyByteUtils.toByteArray(reply.getResult());
+            dataOutput.writeInt(resultBytes.length);
+            dataOutput.write(resultBytes);
+            
+        } catch (IOException ex) {
+            Logger.getLogger(ReplicaClientRunnable.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            try {
+                if(dataOutput != null) {
+                    dataOutput.flush();
+                    dataOutput.close();
+                }
+                clientSocket.close();
+            } catch (IOException ex) {
+                Logger.getLogger(ReplicaClientRunnable.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+    }
+    
     private void send(MessageDoViewChange doViewChange) {
-        LogWriter.log(replica.getReplicaID(), "Sending message DOVIEWCHANGE to Replica " + receiverReplicaID + Constants.NEWLINE + doViewChange.toString());
+        LogWriter.log(replica.getReplicaID(), "Sending message DOVIEWCHANGE to Replica " + receiverID + Constants.NEWLINE + doViewChange.toString());
         DataOutputStream dataOutput = null;
         try {
             dataOutput = new DataOutputStream(clientSocket.getOutputStream());
@@ -259,7 +298,7 @@ public class ReplicaClientRunnable implements Runnable{
     }
     
     private void send(MessageStartView startView) {
-        LogWriter.log(replica.getReplicaID(), "Sending message STARTVIEW to Replica " + receiverReplicaID + Constants.NEWLINE + startView.toString());
+        LogWriter.log(replica.getReplicaID(), "Sending message STARTVIEW to Replica " + receiverID + Constants.NEWLINE + startView.toString());
         DataOutputStream dataOutput = null;
         try {
             dataOutput = new DataOutputStream(clientSocket.getOutputStream());

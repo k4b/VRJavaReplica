@@ -4,7 +4,6 @@
  */
 package vrjavareplica;
 
-import com.sun.org.apache.bcel.internal.generic.ARRAYLENGTH;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -41,16 +40,9 @@ public class Replica implements TimeoutListener {
     public Replica() {
         replicaTable = new ReplicaTable();
         clientTable = new ClientTable();
-        loadParameters();
-        loadHosts();
-        primary = replicaTable.get(0);
-        viewNumber = 1;
-        opNumber = 0;
-        state = ReplicaState.Normal;
         log = new ReplicaLog();
-        lastCommited = 0;
-        numDoViewChangeReceived = 0;
         executedRequests = new ReplicaLog();
+        loadAndSetParameters();
         LogWriter.log(replicaID, identify());
         LogWriter.log(replicaID, getStatus());
         
@@ -63,19 +55,20 @@ public class Replica implements TimeoutListener {
     }
     
     public Replica(int id, String address, int port) {
+        replicaTable = new ReplicaTable();
+        clientTable = new ClientTable();
+        log = new ReplicaLog();
+        executedRequests = new ReplicaLog();
+        loadHosts();
+        loadClients();
         this.replicaID = id;
         this.ipAddress = address;
         this.port = port;
-        replicaTable = new ReplicaTable();
-        clientTable = new ClientTable();
-        loadHosts();
         primary = replicaTable.get(0);
         viewNumber = 1;
         opNumber = 0;
         state = ReplicaState.Normal;
-        log = new ReplicaLog();
         lastCommited = 0;
-        executedRequests = new ReplicaLog();
         numDoViewChangeReceived = 0;
         LogWriter.log(replicaID, identify());
         LogWriter.log(replicaID, getStatus());
@@ -97,8 +90,8 @@ public class Replica implements TimeoutListener {
     private void stopTimeoutChecker() {
         timeoutChecker.terminate();
     }
-    
-    public String identify() {
+    public String identify() {    
+
         String s = "Identification:" + Constants.NEWLINE;
         s += "ipAddress: " + ipAddress + Constants.NEWLINE;
         s += "port: " + port + Constants.NEWLINE;
@@ -118,29 +111,19 @@ public class Replica implements TimeoutListener {
         return status;
     }
     
-    public void incrementOpNumber() {
-        opNumber++;
+    private void loadAndSetParameters() {
+        loadHosts();
+        loadClients();
+        loadParameters();
+        
+        primary = replicaTable.get(0);
+        viewNumber = 1;
+        opNumber = 0;
+        state = ReplicaState.Normal;
+        lastCommited = 0;
+        numDoViewChangeReceived = 0;
     }
-            
-    private boolean loadParameters() {
-        ArrayList<ArrayList<String>> tokenizedLines = MyFileUtils.loadFile(Constants.PARAMETER_FILE_NAME);
-        if(tokenizedLines.size() >= 3) {
-            int repID = Integer.valueOf(tokenizedLines.get(0).get(0));
-            String address = tokenizedLines.get(1).get(0);
-            int portNumber = Integer.valueOf(tokenizedLines.get(2).get(0));
-            this.replicaID = repID;
-            this.ipAddress = address;
-            this.port = portNumber;
-            return true;
-        } else {
-            return false;
-        }
-    }
-    
-    public boolean  testLoadParameters() {
-        return loadParameters();
-    }
-    
+           
     private boolean loadHosts() {
         ArrayList<ArrayList<String>> tokenizedLines = MyFileUtils.loadFile(Constants.HOSTS_FILE_NAME);
         if(tokenizedLines.size() > 0) {
@@ -160,6 +143,42 @@ public class Replica implements TimeoutListener {
     
     public boolean  testloadHosts() {
         return loadHosts();
+    }
+    
+    private boolean loadClients() {
+        ArrayList<ArrayList<String>> tokenizedLines = MyFileUtils.loadFile(Constants.CLIENTS_FILE_NAME);
+        if(tokenizedLines.size() > 0) {
+            for(int i = 0; i < tokenizedLines.size(); i++) {
+                ArrayList<String> tokens = tokenizedLines.get(i);
+                if(tokens.size() >= 2) {
+                    int clientID = i+1;
+                    String address = tokens.get(0);                
+                    int port = Integer.valueOf(tokens.get(1));
+                    clientTable.add(new ClientInfo(clientID, address, port));
+                }
+            }
+        } 
+        boolean result = (clientTable.size() > 0) ? true : false;
+        return result;
+    }
+    
+    private boolean loadParameters() {
+        ArrayList<ArrayList<String>> tokenizedLines = MyFileUtils.loadFile(Constants.PARAMETER_FILE_NAME);
+        if(tokenizedLines.size() >= 3) {
+            int repID = Integer.valueOf(tokenizedLines.get(0).get(0));
+            String address = tokenizedLines.get(1).get(0);
+            int portNumber = Integer.valueOf(tokenizedLines.get(2).get(0));
+            this.replicaID = repID;
+            this.ipAddress = address;
+            this.port = portNumber;
+            return true;
+        } else {
+            return false;
+        }
+    }
+    
+    public boolean  testLoadParameters() {
+        return loadParameters();
     }
     
     public int getReplicaID() {
@@ -278,6 +297,10 @@ public class Replica implements TimeoutListener {
         return replicasLogs;
     }
     
+    public void incrementOpNumber() {
+        opNumber++;
+    }
+    
     
     
     
@@ -301,9 +324,9 @@ public class Replica implements TimeoutListener {
                 if(entry.equals(firstEntry)) {
                     log.removeFirst();
                 }
-                if(entry.getClientSocket() != null && isPrimary()) {
+                if(isPrimary()) {
                     MessageReply reply = new MessageReply(this.getViewNumber(), entry.getRequest().getRequestNumber(), result);
-                    messageProcessor.sendMessage(reply, entry.getClientSocket());
+                    messageProcessor.sendMessage(reply, entry.getRequest().getClientID());
                 }
                 ReplicaLogEntry nextEntry = log.peek(); //retrieves but doesn't remove first element in the list
                 if(nextEntry != null && nextEntry.isIsCommited()) {

@@ -24,11 +24,11 @@ public class MessageProcessor {
         this.replicaID = replica.getReplicaID();
     }
     
-    public synchronized void processMessage(int messageID, Object message, Socket clientSocket) {
+    public synchronized void processMessage(int messageID, Object message) {
         switch(messageID) {
             case Constants.REQUEST : 
                 MessageRequest request = (MessageRequest) message;
-                processMessage(request, clientSocket);
+                processMessage(request);
                 break;
             case Constants.PREPARE : 
                 MessagePrepare prepare = (MessagePrepare) message;
@@ -49,12 +49,12 @@ public class MessageProcessor {
         }
     }
     
-    private void processMessage(MessageRequest request, Socket clientSocket) {
+    private void processMessage(MessageRequest request) {
         LogWriter.log(replicaID, "Processing REQUEST...");
         
         replica.incrementOpNumber();
         
-        replica.getLog().addLast(new ReplicaLogEntry(request, replica.getOpNumber(), clientSocket));
+        replica.getLog().addLast(new ReplicaLogEntry(request, replica.getOpNumber()));
         MessagePrepare prepare = new MessagePrepare(
                 request,
                 replica.getViewNumber(),
@@ -160,36 +160,49 @@ public class MessageProcessor {
         }
     }
     
-    public void sendMessage(MessageReply reply, Socket clientSocket) {
-        DataOutputStream dataOutput = null;
-        try {
-            LogWriter.log(replicaID, "Sending message:" + Constants.NEWLINE + reply.toString());
-            
-            dataOutput = new DataOutputStream(clientSocket.getOutputStream());
-            byte[] messageIDBytes = MyByteUtils.toByteArray(reply.getMessageID());
-            dataOutput.writeInt(messageIDBytes.length);
-            dataOutput.write(messageIDBytes);
-            byte[] viewNumberBytes = MyByteUtils.toByteArray(reply.getViewNumber());
-            dataOutput.writeInt(viewNumberBytes.length);
-            dataOutput.write(viewNumberBytes);
-            byte[] requestNumberBytes = MyByteUtils.toByteArray(reply.getRequestNumber());
-            dataOutput.writeInt(requestNumberBytes.length);
-            dataOutput.write(requestNumberBytes);
-            byte[] resultBytes = MyByteUtils.toByteArray(reply.getResult());
-            dataOutput.writeInt(resultBytes.length);
-            dataOutput.write(resultBytes);
-            
-        } catch (IOException ex) {
-            Logger.getLogger(ServerRunnable.class.getName()).log(Level.SEVERE, null, ex);
-        } finally {
-            try {
-                if(dataOutput != null) {
-                    dataOutput.close();
-                }
-            } catch (IOException ex) {
-                Logger.getLogger(ServerRunnable.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
+//    public void sendMessage2(MessageReply reply) {
+//        DataOutputStream dataOutput = null;
+//        try {
+//            LogWriter.log(replicaID, "Sending message:" + Constants.NEWLINE + reply.toString());
+//            
+//            dataOutput = new DataOutputStream(clientSocket.getOutputStream());
+//            byte[] messageIDBytes = MyByteUtils.toByteArray(reply.getMessageID());
+//            dataOutput.writeInt(messageIDBytes.length);
+//            dataOutput.write(messageIDBytes);
+//            byte[] viewNumberBytes = MyByteUtils.toByteArray(reply.getViewNumber());
+//            dataOutput.writeInt(viewNumberBytes.length);
+//            dataOutput.write(viewNumberBytes);
+//            byte[] requestNumberBytes = MyByteUtils.toByteArray(reply.getRequestNumber());
+//            dataOutput.writeInt(requestNumberBytes.length);
+//            dataOutput.write(requestNumberBytes);
+//            byte[] resultBytes = MyByteUtils.toByteArray(reply.getResult());
+//            dataOutput.writeInt(resultBytes.length);
+//            dataOutput.write(resultBytes);
+//            
+//        } catch (IOException ex) {
+//            Logger.getLogger(ServerRunnable.class.getName()).log(Level.SEVERE, null, ex);
+//        } finally {
+//            try {
+//                if(dataOutput != null) {
+//                    dataOutput.close();
+//                }
+//            } catch (IOException ex) {
+//                Logger.getLogger(ServerRunnable.class.getName()).log(Level.SEVERE, null, ex);
+//            }
+//        }
+//    }
+    
+    public void sendMessage(MessageReply reply, int clientID) {
+        int index = clientID - 1;
+        ClientInfo cInfo = replica.getClientTable().get(index);
+        new Thread(new ReplicaClientRunnable(
+                replica,
+                cInfo.getIpAddress(), 
+                cInfo.getPort(), 
+                Constants.REPLY, 
+                reply,
+                clientID)
+            ).start();
     }
     
     private void sendMessage(MessagePrepare prepare) {

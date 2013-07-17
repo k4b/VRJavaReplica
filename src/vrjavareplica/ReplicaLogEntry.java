@@ -20,21 +20,12 @@ public class ReplicaLogEntry {
     private int commitsNumber;
     private boolean isCommited;
     private boolean isExecuted;
-    private Socket clientSocket;
     
     public ReplicaLogEntry(MessageRequest request, int operationNumber) {
         this.request = request;
         this.operationNumber = operationNumber;
         this.commitsNumber = 0;
         this.isCommited = false;
-    }
-    
-    public ReplicaLogEntry(MessageRequest request, int operationNumber, Socket clientSocket) {
-        this.request = request;
-        this.operationNumber = operationNumber;
-        this.commitsNumber = 0;
-        this.isCommited = false;
-        this.clientSocket = clientSocket;
     }
     
     public void increaseCommitsNumber() {
@@ -59,14 +50,6 @@ public class ReplicaLogEntry {
 
     public void setIsCommited(boolean isCommited) {
         this.isCommited = isCommited;
-    }
-
-    public Socket getClientSocket() {
-        return clientSocket;
-    }
-
-    public void setClientSocket(Socket clientSocket) {
-        this.clientSocket = clientSocket;
     }
 
     public boolean isIsExecuted() {

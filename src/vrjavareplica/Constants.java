@@ -16,6 +16,7 @@ public class Constants {
     //Files
     public static final String PARAMETER_FILE_NAME = "Parameters.txt";
     public static final String HOSTS_FILE_NAME = "Hosts.txt";
+    public static final String CLIENTS_FILE_NAME = "Clients.txt";
     public static final String FILE_DIRECTORY = "/home/karol/Documents/";
     public static final String WIN_FILE_DIRECTORY = "C:\\Users\\Karol\\Documents\\VRProjekt\\";
     
@@ -36,4 +37,7 @@ public class Constants {
     public static final int COPY = 1;
     public static final int DELETE = 2;
     
+    //Flags
+    public static final int TO_CLIENT = 0;
+    public static final int TO_REPLICA = 1;
 }

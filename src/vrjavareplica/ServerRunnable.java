@@ -36,7 +36,7 @@ public class ServerRunnable implements Runnable{
             int messageID = MyByteUtils.byteArrayToInt(requestIDBytes);
             Object objectMessage = receiveMessage(messageID);
             
-            messageProcessor.processMessage(messageID, objectMessage, clientSocket);
+            messageProcessor.processMessage(messageID, objectMessage);
 //            dataInput.close();
 //            clientSocket.close();
             

@@ -1,7 +1,10 @@
 package vrjavareplica;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
@@ -18,13 +21,13 @@ import java.util.logging.Logger;
  */
 public class MyFileUtils {
 
-	/**
+    /**
      * Reads data from specified file.
      * @param path Path to file.
      * @return 2-dimensional array of data.
      */
     public static ArrayList<ArrayList<String>> loadFile(String path)
-	{
+    {
 		FileReader fr = null;
 		String line = "";
 		ArrayList<ArrayList<String>> dataArray = new ArrayList<>();
@@ -59,13 +62,13 @@ public class MyFileUtils {
 		return dataArray;
 	}
         
-        /**
+    /**
      * Reads data from specified file.
      * @param file A file to read from.
      * @return 2-dimensional array of data.
      */
     public static ArrayList<ArrayList<String>> loadFile(File file)
-	{
+    {
 		FileReader fr = null;
 		String line = "";
 		ArrayList<ArrayList<String>> dataArray = new ArrayList<>();
@@ -100,19 +103,19 @@ public class MyFileUtils {
 		return dataArray;
 	}
 	
-	private static ArrayList<String> parseLine(String line)
-	{
-		StringTokenizer st = new StringTokenizer(line);
-		ArrayList<String> tokens = new ArrayList<>();
-		
-		while(st.hasMoreTokens()){
-			tokens.add(st.nextToken());
-		}
-		
-		return tokens;
-	}
+    private static ArrayList<String> parseLine(String line)
+    {
+            StringTokenizer st = new StringTokenizer(line);
+            ArrayList<String> tokens = new ArrayList<>();
+
+            while(st.hasMoreTokens()){
+                    tokens.add(st.nextToken());
+            }
+
+            return tokens;
+    }
         
-        /**
+    /**
      * Saves text into a specified file.
      * @param file A file to write to.
      * @param text A text to write to file.
@@ -155,5 +158,37 @@ public class MyFileUtils {
         File file = new File(Constants.WIN_FILE_DIRECTORY + path);
         result = file.delete();
         return result;        
+    }
+    
+    public static byte[] readFileToByteArray(File file) {
+        try {
+            byte [] fileData = new byte[(int)file.length()];
+            DataInputStream dis = new DataInputStream(new FileInputStream(file));
+            dis.readFully(fileData);
+            dis.close();
+            return fileData;
+        } catch (IOException e) {
+            return null;
+        }
+    }
+    
+    public static byte[] readFileToByteArray2(File file) {
+        try {
+            FileInputStream fis = new FileInputStream(file);
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            byte[] buf = new byte[1024];
+            
+            for(int readNum; (readNum = fis.read(buf)) != -1;) {
+                bos.write(buf, 0, readNum);
+            }
+            bos.flush();
+            byte[] bytes = bos.toByteArray();
+            fis.close();
+            bos.close();
+            return bytes;
+            
+        } catch (IOException e) {
+            return null;
+        }
     }
 }

@@ -41,4 +41,48 @@ public class ReplicaLog extends LinkedList<ReplicaLogEntry>{
         }
         return null;
     }
+    
+    public boolean isMoreRecent(ReplicaLog compared) {
+        boolean result = false;
+        if(compared == null || compared.size() == 0) {
+            return false;
+        } else if (this.size() == 0) {
+            return true;
+        } else {
+            ReplicaLogEntry thisLastEntry = this.getLast();
+            ReplicaLogEntry comparedLastEntry = compared.getLast();
+            if(thisLastEntry.getRequest().getViewNumber() > comparedLastEntry.getRequest().getViewNumber()) {
+                result = true;
+            } else if (thisLastEntry.getRequest().getViewNumber() 
+                    == comparedLastEntry.getRequest().getViewNumber()
+                    && thisLastEntry.getOperationNumber() > comparedLastEntry.getOperationNumber()) {
+                result = true;
+            } else {
+                result = false;
+            }
+        }
+        return result;
+    }
+    
+    public ReplicaLog removeCommitedSubset(ReplicaLog subset) {
+        ReplicaLog copy = new ReplicaLog(this);
+        for(ReplicaLogEntry entry : subset) {
+            if(entry.isExecuted() && copy.contains(entry)) {
+                copy.remove(entry);
+            }
+        }
+        return copy;
+    }
+    
+    public boolean contains(ReplicaLogEntry entry) {
+        ReplicaLogEntry e = findEntry(entry.getOperationNumber());
+        return (e == null) ? false : true;
+    }
+    
+    public boolean remove(ReplicaLogEntry entry) {
+        ReplicaLogEntry e = findEntry(entry.getOperationNumber());
+        boolean result = super.remove(e);
+        return result;
+    }
+    
 }

@@ -44,7 +44,7 @@ public class ReplicaLogEntry {
         return commitsNumber;
     }
 
-    public boolean isIsCommited() {
+    public boolean isCommited() {
         return isCommited;
     }
 
@@ -52,7 +52,7 @@ public class ReplicaLogEntry {
         this.isCommited = isCommited;
     }
 
-    public boolean isIsExecuted() {
+    public boolean isExecuted() {
         return isExecuted;
     }
 
@@ -60,5 +60,12 @@ public class ReplicaLogEntry {
         this.isExecuted = isExecuted;
     }
     
-    
+    public boolean equals(ReplicaLogEntry compared) {
+        boolean result = false;
+        if(this.operationNumber == compared.operationNumber &&
+                this.getRequest().getViewNumber() == compared.getRequest().getViewNumber()) {
+            result = true;    
+        }
+        return result;
+    }
 }

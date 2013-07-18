@@ -35,7 +35,7 @@ public class Replica implements TimeoutListener {
     private int numDoViewChangeReceived;
     private MessageDoViewChange mostRecentDoViewChange = null;
     private ArrayList<ReplicaLog> replicasLogs = new ArrayList<>();
-    private int timeout = 20;
+    private int timeout = 30;
     
     public Replica() {
         replicaTable = new ReplicaTable();
@@ -318,6 +318,7 @@ public class Replica implements TimeoutListener {
         }
         
         if(result) {
+            entry.setIsExecuted(true);
             executedRequests.addLast(entry);
             try {
                 ReplicaLogEntry firstEntry = log.peek(); //retrieves but doesn't remove first element in the list
@@ -329,7 +330,7 @@ public class Replica implements TimeoutListener {
                     messageProcessor.sendMessage(reply, entry.getRequest().getClientID());
                 }
                 ReplicaLogEntry nextEntry = log.peek(); //retrieves but doesn't remove first element in the list
-                if(nextEntry != null && nextEntry.isIsCommited()) {
+                if(nextEntry != null && nextEntry.isCommited()) {
                     executeRequest(nextEntry);
                 }
             } catch (NoSuchElementException e) {
@@ -415,6 +416,9 @@ public class Replica implements TimeoutListener {
     
     public void switchToPrimary() {
         stopTimeoutChecker();
+        if(this.log.isMoreRecent(mostRecentDoViewChange.getLog())) {
+            mostRecentDoViewChange = new MessageDoViewChange(replicaID, viewNumber, log, lastCommited);
+        }
         if(mostRecentDoViewChange.getLog().size() == 0) {
             opNumber = 0;
         } else {
@@ -426,13 +430,28 @@ public class Replica implements TimeoutListener {
         numDoViewChangeReceived = 0;
         LogWriter.log(replicaID, "Switched to PRIMARY");
         LogWriter.log(replicaID, getStatus());
-        MessageStartView startView = new MessageStartView(viewNumber, mostRecentDoViewChange.getLog(), opNumber);
+        MessageStartView startView = new MessageStartView(
+                viewNumber, 
+                mostRecentDoViewChange.getLog(), 
+                mostRecentDoViewChange.getLastCommited());
         messageProcessor.sendMessage(startView);
         //execute pending operations
-        ArrayList<ReplicaLogEntry> entries = computeOperationsToExecute(replicasLogs, replicaTable.size()/2);
-        for(ReplicaLogEntry entry : entries) {
-            executeRequest(entry);
-            //send replies to clients.
+        executeCommited();
+        
+        
+//        ArrayList<ReplicaLogEntry> entries = computeOperationsToExecute(replicasLogs, replicaTable.size()/2);
+//        for(ReplicaLogEntry entry : entries) {
+//            executeRequest(entry);
+//            //send replies to clients.
+//        }
+    }
+    
+    private void executeCommited() {
+        if(lastCommited != mostRecentDoViewChange.getLastCommited()) {
+            ReplicaLog toExecute = mostRecentDoViewChange.getLog().removeCommitedSubset(this.log);
+            for(ReplicaLogEntry entry : toExecute) {
+                executeRequest(entry);
+            }
         }
     }
     

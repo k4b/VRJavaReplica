@@ -55,26 +55,4 @@ public class MessageDoViewChange extends Message {
     public int getLastCommited() {
         return lastCommited;
     }
-    
-    public boolean isLogMoreRecent(MessageDoViewChange compared) {
-        boolean result = false;
-        if(compared.getLog() == null || compared.getLog().size() == 0) {
-            return false;
-        } else if (this.log.size() == 0) {
-            return true;
-        } else {
-            ReplicaLogEntry thisLastEntry = this.log.getLast();
-            ReplicaLogEntry comparedLastEntry = compared.getLog().getLast();
-            if(thisLastEntry.getRequest().getViewNumber() > comparedLastEntry.getRequest().getViewNumber()) {
-                result = true;
-            } else if (thisLastEntry.getRequest().getViewNumber() 
-                    == comparedLastEntry.getRequest().getViewNumber()
-                    && thisLastEntry.getOperationNumber() > comparedLastEntry.getOperationNumber()) {
-                result = true;
-            } else {
-                result = false;
-            }
-        }
-        return result;
-    }
 }

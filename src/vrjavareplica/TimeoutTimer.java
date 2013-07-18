@@ -46,7 +46,7 @@ public class TimeoutTimer {
             future.get(0, TimeUnit.SECONDS);
             result = true;
         } catch (InterruptedException | ExecutionException ex) {
-            Logger.getLogger(TimeoutTimer.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(TimeoutTimer.class.getName()).log(Level.SEVERE, "isTimeOut exception.", ex);
         } catch (TimeoutException ex) {
             //Not timed out
         }

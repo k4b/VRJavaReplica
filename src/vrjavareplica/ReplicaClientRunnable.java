@@ -82,6 +82,10 @@ public class ReplicaClientRunnable implements Runnable{
                 MessageStartView startView = (MessageStartView) message;
                 send(startView);
                 break;
+            case Constants.CORRECTVIEWNUMBER :
+                MessageCorrectViewNumber correctViewNumber = (MessageCorrectViewNumber) message;
+                send(correctViewNumber);
+                break;
         }
     }
     
@@ -265,7 +269,7 @@ public class ReplicaClientRunnable implements Runnable{
                     dataOutput.writeInt(operationNumberBytes.length);
                     dataOutput.write(operationNumberBytes);
                     //isCommited
-                    byte[] isCommitedBytes = MyByteUtils.toByteArray(log.get(i).isIsCommited());
+                    byte[] isCommitedBytes = MyByteUtils.toByteArray(log.get(i).isCommited());
                     dataOutput.writeInt(isCommitedBytes.length);
                     dataOutput.write(isCommitedBytes);
                 }
@@ -351,7 +355,7 @@ public class ReplicaClientRunnable implements Runnable{
                     dataOutput.writeInt(operationNumberBytes.length);
                     dataOutput.write(operationNumberBytes);
                     //isCommited
-                    byte[] isCommitedBytes = MyByteUtils.toByteArray(log.get(i).isIsCommited());
+                    byte[] isCommitedBytes = MyByteUtils.toByteArray(log.get(i).isCommited());
                     dataOutput.writeInt(isCommitedBytes.length);
                     dataOutput.write(isCommitedBytes);
                 }
@@ -377,5 +381,9 @@ public class ReplicaClientRunnable implements Runnable{
                 Logger.getLogger(ReplicaClientRunnable.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
+    }
+    
+    private void send(MessageCorrectViewNumber correctViewNumber) {
+        LogWriter.log(replica.getReplicaID(), "Sending message CORRECTVIEWNUMBER not supported!");
     }
 }

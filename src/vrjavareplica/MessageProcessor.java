@@ -4,9 +4,6 @@
  */
 package vrjavareplica;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 /**
  *
  * @author karol
@@ -48,20 +45,16 @@ public class MessageProcessor {
     
     private void processMessage(MessageRequest request) {
         LogWriter.log(replicaID, "Processing REQUEST...");
-        if(replica.getViewNumber() == request.getViewNumber()) {
-            if(replica.isPrimary()) {
-                replica.incrementOpNumber();
-                replica.getLog().addLast(new ReplicaLogEntry(request, replica.getOpNumber()));
-                MessagePrepare prepare = new MessagePrepare(
-                        request,
-                        replica.getViewNumber(),
-                        replica.getOpNumber(),
-                        replica.getLastCommited()
-                        );
-                sendMessage(prepare);
-            }
-        } else {
-            processWrongViewNumber(request.getMessageID(), request);
+        if(replica.isPrimary()) {
+            replica.incrementOpNumber();
+            replica.getLog().addLast(new ReplicaLogEntry(request, replica.getOpNumber()));
+            MessagePrepare prepare = new MessagePrepare(
+                    request,
+                    replica.getViewNumber(),
+                    replica.getOpNumber(),
+                    replica.getLastCommited()
+                    );
+            sendMessage(prepare);
         }
     }
     

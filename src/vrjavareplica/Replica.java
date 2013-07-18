@@ -437,13 +437,6 @@ public class Replica implements TimeoutListener {
         messageProcessor.sendMessage(startView);
         //execute pending operations
         executeCommited();
-        
-        
-//        ArrayList<ReplicaLogEntry> entries = computeOperationsToExecute(replicasLogs, replicaTable.size()/2);
-//        for(ReplicaLogEntry entry : entries) {
-//            executeRequest(entry);
-//            //send replies to clients.
-//        }
     }
     
     private void executeCommited() {

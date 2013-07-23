@@ -55,4 +55,15 @@ public class MessageDoViewChange extends Message {
     public int getLastCommited() {
         return lastCommited;
     }
+    
+    public boolean isMoreRecent(MessageDoViewChange compared) {
+        if(this.viewNumber > compared.getViewNumber()) {
+            return true;
+        } else if(this.viewNumber == compared.getViewNumber()
+                && this.log.isMoreRecent(compared.getLog())) {
+            return true;
+        } else {
+            return false;
+        }
+    }
 }

@@ -9,12 +9,13 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Timer;
 
 /**
  *
  * @author karol
  */
-public class Replica implements TimeoutListener {
+public class Replica {
 
     public enum ReplicaState { Normal, ViewChange, Recovering };  
     
@@ -30,11 +31,11 @@ public class Replica implements TimeoutListener {
     private ReplicaLog log;
     private int lastCommited;
     private MessageProcessor messageProcessor;
-    private TimeoutChecker timeoutChecker;;
     private ReplicaLog executedRequests;
     private int numDoViewChangeReceived;
     private MessageDoViewChange mostRecentDoViewChange = null;
     private ArrayList<ReplicaLog> replicasLogs = new ArrayList<>();
+    private Timer timer;
     private int timeout = 30;
     
     public Replica() {
@@ -42,12 +43,13 @@ public class Replica implements TimeoutListener {
         clientTable = new ClientTable();
         log = new ReplicaLog();
         executedRequests = new ReplicaLog();
+        timer = new Timer();
         loadAndSetParameters();
         LogWriter.log(replicaID, identify());
         LogWriter.log(replicaID, getStatus());
         
         if(!isPrimary()) {
-            startTimoutChecker();
+            startTimeoutChecker();
         }
         messageProcessor = new MessageProcessor(this);
         VRCode vrCode = new VRCode(replicaID, port, messageProcessor);
@@ -59,6 +61,7 @@ public class Replica implements TimeoutListener {
         clientTable = new ClientTable();
         log = new ReplicaLog();
         executedRequests = new ReplicaLog();
+        timer = new Timer();
         loadHosts();
         loadClients();
         this.replicaID = id;
@@ -74,22 +77,27 @@ public class Replica implements TimeoutListener {
         LogWriter.log(replicaID, getStatus());
         
         if(!isPrimary()) {
-            startTimoutChecker();
+            startTimeoutChecker();
         }
         messageProcessor = new MessageProcessor(this);
         VRCode vrCode = new VRCode(replicaID, port, messageProcessor);
         new Thread(vrCode).start();
     }
     
-    public void startTimoutChecker() {
-            timeoutChecker = new TimeoutChecker(timeout);
-            timeoutChecker.addTimeoutListener(this);
-            timeoutChecker.start();
+    public void startTimeoutChecker() {
+        timer = new Timer();
+        timer.schedule(new PrimaryTimeoutTask(this), timeout*1000);
     }
     
-    private void stopTimeoutChecker() {
-        timeoutChecker.terminate();
+    public void stopTimeoutChecker() {
+        timer.cancel();
     }
+    
+    public void restartTimeoutChecker() {
+        stopTimeoutChecker();
+        startTimeoutChecker();
+    }
+    
     public String identify() {    
 
         String s = "Identification:" + Constants.NEWLINE;
@@ -268,10 +276,6 @@ public class Replica implements TimeoutListener {
     public void setLastCommited(int lastCommited) {
         this.lastCommited = lastCommited;
     }
-    
-    public TimeoutChecker getTimeoutChecker() {
-        return timeoutChecker;
-    }
 
     public int getNumDoViewChangeReceived() {
         return numDoViewChangeReceived;
@@ -299,6 +303,10 @@ public class Replica implements TimeoutListener {
     
     public void incrementOpNumber() {
         opNumber++;
+    }
+
+    public Timer getTimer() {
+        return timer;
     }
     
     
@@ -363,13 +371,12 @@ public class Replica implements TimeoutListener {
     }
     
     public boolean isNextPrimary() {
-        //viewNumber start from 1, positions from 0
-        ReplicaInfo thisReplicaInfo = new ReplicaInfo(replicaID, ipAddress, port);
-        if(viewNumber == positionInReplicasTable(thisReplicaInfo)) {
-            return true;
-        } else {
-            return false;
+        boolean result = false;
+        int index = this.replicaID-1;
+        if(replicaID == nextPrimary().getReplicaID()) {
+            result = true;
         }
+        return result;
     }
     
     public ReplicaInfo nextPrimary() {
@@ -382,25 +389,13 @@ public class Replica implements TimeoutListener {
     }
     
     private int positionInReplicasTable(ReplicaInfo replicaInfo) {
-        int position = -1;
-        for(int i = 0; i < replicaTable.size(); i++) {
-            if(replicaTable.get(i).getIpAddress().equals(replicaInfo.getIpAddress()) 
-                            && replicaTable.get(i).getPort() == replicaInfo.getPort()) {
-                position = i;
-                break;
-            }
-        }
-        if(position == -1) {
-            throw new RuntimeException("Replica " + replicaInfo.getReplicaID() + " " + ipAddress 
-                    + ":" + port + " does not appear in replicas table!");
-        }
+        int position = replicaInfo.getReplicaID()-1;
         return position;
     }
     
-    @Override
     public void timeout() {
-        if(!isPrimary()) {
-            LogWriter.log(replicaID, "Primary timeout!");
+        LogWriter.log(replicaID, "Primary timeout!");
+        if(!isPrimary() && !isNextPrimary()) {
             carryViewChange();
         }
     }
@@ -416,12 +411,13 @@ public class Replica implements TimeoutListener {
     
     public void switchToPrimary() {
         stopTimeoutChecker();
-        if(this.log.isMoreRecent(mostRecentDoViewChange.getLog())) {
-            mostRecentDoViewChange = new MessageDoViewChange(replicaID, viewNumber, log, lastCommited);
+        MessageDoViewChange thisDoViewChange = new MessageDoViewChange(replicaID, viewNumber+1, log, lastCommited);
+        if(thisDoViewChange.isMoreRecent(mostRecentDoViewChange)) {
+            mostRecentDoViewChange = thisDoViewChange;
+            LogWriter.log(replicaID, "Self DoViewChange is most recent:" + Constants.NEWLINE
+                    + thisDoViewChange.toString());
         }
-        if(mostRecentDoViewChange.getLog().size() == 0) {
-            opNumber = 0;
-        } else {
+        if(mostRecentDoViewChange.getLog().size() != 0) {
             opNumber = mostRecentDoViewChange.getLog().getLast().getOperationNumber();
         }
         viewNumber = mostRecentDoViewChange.getViewNumber();
@@ -437,6 +433,7 @@ public class Replica implements TimeoutListener {
         messageProcessor.sendMessage(startView);
         //execute pending operations
         executeCommited();
+        mostRecentDoViewChange = null;
     }
     
     private void executeCommited() {

@@ -62,7 +62,7 @@ public class MessageProcessor {
         LogWriter.log(replicaID, "Processing PREPARE...");
         if(replica.getViewNumber() == prepare.getViewNumber()) {
             if(replica.getState().equals(Replica.ReplicaState.Normal)) {
-                restartTimeoutChecker();
+                replica.restartTimeoutChecker();
                 replica.getLog().addLast(new ReplicaLogEntry(prepare.getRequest(), prepare.getOperationNumber()));
                 MessagePrepareOK prepareOK = new MessagePrepareOK(
                         replica.getViewNumber(), 
@@ -123,24 +123,29 @@ public class MessageProcessor {
     
     private void processMessage(MessageDoViewChange doViewChange) {
         LogWriter.log(replicaID, "Processing DOVIEWCHANGE...");
-        if(replica.getViewNumber() <= doViewChange.getViewNumber()) {
-            replica.increaseNumDoViewChangeReceived();
-            replica.getReplicasLogs().add(doViewChange.getLog());
-            if(replica.getMostRecentDoViewChange() == null) {
-                replica.setMostRecentDoViewChange(doViewChange);
-            } else if(doViewChange.getLog().isMoreRecent(replica.getMostRecentDoViewChange().getLog())) {
-                replica.setMostRecentDoViewChange(doViewChange);
-            }
-            if(isNumDoViewChangeReceivedSufficient()) {
-                replica.switchToPrimary();
+        if(!replica.isPrimary()) {
+            if(replica.getViewNumber() <= doViewChange.getViewNumber()) {
+                replica.increaseNumDoViewChangeReceived();
+                replica.getReplicasLogs().add(doViewChange.getLog());
+                if(replica.getMostRecentDoViewChange() == null) {
+                    replica.setMostRecentDoViewChange(doViewChange);
+                } else if(doViewChange.isMoreRecent(replica.getMostRecentDoViewChange())) {
+                    replica.setMostRecentDoViewChange(doViewChange);
+                }
+                if(isNumDoViewChangeReceivedSufficient()) {
+                    replica.switchToPrimary();
+                }
+            } else {
+                processWrongViewNumber(doViewChange.getMessageID(), doViewChange);
             }
         } else {
-            processWrongViewNumber(doViewChange.getMessageID(), doViewChange);
+            LogWriter.log(replicaID, "Already Primary!");
         }
     }
     
     private void processMessage(MessageStartView startView) {
-        LogWriter.log(replicaID, "Processing STARTVIEW...");
+        LogWriter.log(replicaID, "Processing STARTVIEW... myViewNumber=" + replica.getViewNumber() 
+                + " startViewNumber=" + startView.getViewNumber());
         if(replica.getViewNumber() <= startView.getViewNumber()) {
             replica.setLog(startView.getLog());
             if(startView.getLog().size() > 0) {
@@ -155,10 +160,11 @@ public class MessageProcessor {
                     replica.getReplicaTable().get(nextPrimaryTableRow).getPort()));
             LogWriter.log(replicaID, "View changed");
             LogWriter.log(replicaID, replica.getStatus());
-            replica.startTimoutChecker();
+            replica.restartTimeoutChecker();
             // send prepareOK to all
             commitNotCommited(startView);
         } else {
+            LogWriter.log(replicaID, "Wrong view number in STARTVIEW");
             processWrongViewNumber(startView.getMessageID(), startView);
         }
     }
@@ -267,6 +273,7 @@ public class MessageProcessor {
                 doViewChange,
                 replica.nextPrimary().getReplicaID())
             ).start();
+        replica.restartTimeoutChecker();
     }
     
     public void sendMessage(MessageStartView startView) {
@@ -315,10 +322,6 @@ public class MessageProcessor {
             boolean isFirst = entry.equals(replica.getLog().getFirst());
             return isFirst;
         }
-    }
-    
-    private void restartTimeoutChecker() {
-        replica.getTimeoutChecker().restart();
     }
     
     private boolean isNumDoViewChangeReceivedSufficient() {

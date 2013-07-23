@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package vrjavareplica;
+package Timeout;
 
 import java.util.concurrent.Callable;
 
@@ -10,10 +10,10 @@ import java.util.concurrent.Callable;
  *
  * @author karol
  */
-class TimeoutTask implements Callable<String> {
+class MyTimeoutTask implements Callable<String> {
     int timeout;
     
-    public TimeoutTask(int timeout) {
+    public MyTimeoutTask(int timeout) {
      this.timeout = timeout;   
     }
     @Override

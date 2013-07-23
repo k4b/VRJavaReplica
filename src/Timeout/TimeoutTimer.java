@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package vrjavareplica;
+package Timeout;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -26,13 +26,13 @@ public class TimeoutTimer {
     public TimeoutTimer(int timeout) {
         this.timeout = timeout;
         executor = Executors.newSingleThreadExecutor();
-        future = executor.submit(new TimeoutTask(timeout));
+        future = executor.submit(new MyTimeoutTask(timeout));
     }
     
     public void restart() {
         executor.shutdownNow();
         executor = Executors.newSingleThreadExecutor();
-        future = executor.submit(new TimeoutTask(timeout));
+        future = executor.submit(new MyTimeoutTask(timeout));
     }
     
     public void stop() {

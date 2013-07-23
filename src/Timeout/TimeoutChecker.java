@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package vrjavareplica;
+package Timeout;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;

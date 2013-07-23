@@ -176,9 +176,11 @@ public class Replica {
             int repID = Integer.valueOf(tokenizedLines.get(0).get(0));
             String address = tokenizedLines.get(1).get(0);
             int portNumber = Integer.valueOf(tokenizedLines.get(2).get(0));
+            int timeoutLength = Integer.valueOf(tokenizedLines.get(3).get(0));
             this.replicaID = repID;
             this.ipAddress = address;
             this.port = portNumber;
+            this.timeout = timeoutLength;
             return true;
         } else {
             return false;

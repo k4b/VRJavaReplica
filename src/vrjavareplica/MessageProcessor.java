@@ -55,6 +55,9 @@ public class MessageProcessor {
                     replica.getLastCommited()
                     );
             sendMessage(prepare);
+        } else {
+            LogWriter.log(replicaID, "Not Primary! Current Primary: " 
+                    + replica.getPrimary().getReplicaID());
         }
     }
     
